@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: migtool-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: migtool
+  template:
+    metadata:
+      labels:
+        app: migtool
+    spec:
+      containers:
+      - name: migtool
+        image: migtool:latest
+        ports:
+        - containerPort: 3000

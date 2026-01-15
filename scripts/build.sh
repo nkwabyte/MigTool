@@ -1,0 +1,1 @@
+docker build -t migtool:latest -f k8s/Dockerfile .

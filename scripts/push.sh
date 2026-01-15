@@ -1,0 +1,1 @@
+docker push your-registry/migtool:latest
