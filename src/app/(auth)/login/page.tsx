@@ -1,12 +1,24 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect } from 'react';
 import { login } from '@/src/actions/auth';
 import { Button } from '@/src/components/ui/button';
 import Link from 'next/link';
+import { useAppDispatch } from '@/src/store/hooks';
+import { login as loginAction } from '@/src/store/slices/authSlice';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
-    const [state, action, pending] = useActionState(login, undefined);
+    const [state, action, pending] = useActionState(login, { success: false });
+    const dispatch = useAppDispatch();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (state.success) {
+            dispatch(loginAction());
+            router.push('/');
+        }
+    }, [state.success, dispatch, router]);
 
     return (
         <div className="flex flex-col space-y-6 bg-gray-900 border border-gray-800 p-8 rounded-xl shadow-2xl">

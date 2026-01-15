@@ -28,6 +28,7 @@ export type FormState = {
         form?: string[];
     };
     message?: string;
+    success?: boolean;
 };
 
 export async function signup(prevState: FormState, formData: FormData) {
@@ -73,7 +74,7 @@ export async function signup(prevState: FormState, formData: FormData) {
     }
 
     await createSession(userId, name, email);
-    redirect('/');
+    return { success: true };
 }
 
 export async function login(prevState: FormState, formData: FormData) {
@@ -107,7 +108,7 @@ export async function login(prevState: FormState, formData: FormData) {
     }
 
     await createSession(user.id, user.name, user.email);
-    redirect('/');
+    return { success: true };
 }
 
 export async function logout() {
