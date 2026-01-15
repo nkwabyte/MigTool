@@ -92,8 +92,8 @@ IMPRESSION:
                 ? 'Acute ischemic stroke in left MCA territory. Recommend immediate intervention.'
                 : 'Acute ischemic stroke involving the left middle cerebral artery territory with early mass effect and midline shift. No hemorrhagic conversion identified. Clinical correlation recommended with immediate consideration for endovascular intervention within the therapeutic window. Follow-up imaging recommended to assess for hemorrhagic transformation and progression of ischemic changes.',
             images: [
-                { url: 'ct-brain', label: 'CT Brain - Axial View' },
-                { url: 'mri-brain', label: 'MRI Brain - Axial View' }
+                { url: '/assets/1b9a6f0b7bb7bc8701cafaf2a061f100a2c0ecfb.png', label: 'CT Brain - Axial View' },
+                { url: '/assets/f25826900735c77151f96b7831dafcf98bf45a20.png', label: 'MRI Brain - Axial View' }
             ],
             generatedDate: new Date().toISOString()
         };

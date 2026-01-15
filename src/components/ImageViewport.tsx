@@ -1,4 +1,4 @@
-import { ImageWithFallback } from './figma/ImageWithFallback';
+import { ImageWithFallback } from './ImageWithFallback';
 import { Link, Maximize2, Eye, EyeOff } from 'lucide-react';
 import { Button } from './ui/button';
 

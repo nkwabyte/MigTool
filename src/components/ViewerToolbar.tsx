@@ -1,3 +1,5 @@
+'use client';
+
 import { FileText, Flame, ArrowLeftRight } from 'lucide-react';
 import { Button } from './ui/button';
 import { Slider } from './ui/slider';
