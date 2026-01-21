@@ -17,54 +17,11 @@ export default function ViewerPage() {
     const [imageGenType, setImageGenType] = useState('ct-to-mri');
 
     const generateBriefReport = () => {
-        return `CLINICAL INDICATION:
-Acute onset neurological symptoms.
-
-TECHNIQUE:
-Non-contrast CT and MRI of the brain.
-
-FINDINGS:
-Multiple hypodense areas in left cerebral hemisphere on CT. MRI confirms restricted diffusion consistent with acute ischemic changes. No hemorrhage detected.
-
-IMPRESSION:
-Acute ischemic stroke in left MCA territory. Immediate intervention recommended.`;
+        return `CLINICAL INDICATION:\nAcute onset neurological symptoms.\n\nTECHNIQUE:\nNon-contrast CT and MRI of the brain.\n\nFINDINGS:\nMultiple hypodense areas in left cerebral hemisphere on CT. MRI confirms restricted diffusion consistent with acute ischemic changes. No hemorrhage detected.\n\nIMPRESSION:\nAcute ischemic stroke in left MCA territory. Immediate intervention recommended.`;
     };
 
     const generateDetailedReport = () => {
-        return `CLINICAL INDICATION:
-Patient presents with acute onset left-sided weakness and speech difficulties. Evaluate for acute cerebrovascular accident.
-
-TECHNIQUE:
-Non-contrast CT of the head was performed with 5mm axial slices. Subsequently, multiplanar MRI brain was obtained including DWI, FLAIR, T1, and T2 sequences.
-
-COMPARISON:
-No prior imaging available for comparison.
-
-FINDINGS:
-
-Brain Parenchyma:
-Multiple well-defined hypodense regions are identified in the left middle cerebral artery (MCA) territory on CT imaging, measuring approximately 3.5 x 2.8 cm. The MRI demonstrates restricted diffusion in these areas with corresponding high signal on DWI and low signal on ADC maps, confirming acute ischemic stroke.
-
-Mass Effect:
-There is associated mass effect with approximately 4mm rightward midline shift. The left lateral ventricle shows mild compression. No transtentorial or subfalcine herniation at this time.
-
-Hemorrhage:
-No evidence of acute or chronic hemorrhage. No hemorrhagic transformation of the infarct.
-
-Vascular Structures:
-The visualized intracranial vessels demonstrate no gross abnormality on this non-contrast study. Circle of Willis appears intact.
-
-Extra-axial Spaces:
-No extra-axial fluid collection. Ventricular system is normal in size and configuration aside from the aforementioned left lateral ventricle compression.
-
-Osseous Structures:
-Visualized osseous structures demonstrate no acute fracture or lytic lesion.
-
-IMPRESSION:
-1. Acute ischemic stroke involving the left middle cerebral artery territory with early mass effect and 4mm rightward midline shift.
-2. No hemorrhagic conversion identified at this time.
-3. Recommend immediate clinical correlation and consideration for endovascular intervention within the therapeutic window.
-4. Follow-up imaging recommended to assess for hemorrhagic transformation and progression of ischemic changes.`;
+        return `CLINICAL INDICATION:\nPatient presents with acute onset left-sided weakness and speech difficulties. Evaluate for acute cerebrovascular accident.\n\nTECHNIQUE:\nNon-contrast CT of the head was performed with 5mm axial slices. Subsequently, multiplanar MRI brain was obtained including DWI, FLAIR, T1, and T2 sequences.\n\nCOMPARISON:\nNo prior imaging available for comparison.\n\nFINDINGS:\n\nBrain Parenchyma:\nMultiple well-defined hypodense regions are identified in the left middle cerebral artery (MCA) territory on CT imaging, measuring approximately 3.5 x 2.8 cm. The MRI demonstrates restricted diffusion in these areas with corresponding high signal on DWI and low signal on ADC maps, confirming acute ischemic stroke.\n\nMass Effect:\nThere is associated mass effect with approximately 4mm rightward midline shift. The left lateral ventricle shows mild compression. No transtentorial or subfalcine herniation at this time.\n\nHemorrhage:\nNo evidence of acute or chronic hemorrhage. No hemorrhagic transformation of the infarct.\n\nVascular Structures:\nThe visualized intracranial vessels demonstrate no gross abnormality on this non-contrast study. Circle of Willis appears intact.\n\nExtra-axial Spaces:\nNo extra-axial fluid collection. Ventricular system is normal in size and configuration aside from the aforementioned left lateral ventricle compression.\n\nOsseous Structures:\nVisualized osseous structures demonstrate no acute fracture or lytic lesion.\n\nIMPRESSION:\n1. Acute ischemic stroke involving the left middle cerebral artery territory with early mass effect and 4mm rightward midline shift.\n2. No hemorrhagic conversion identified at this time.\n3. Recommend immediate clinical correlation and consideration for endovascular intervention within the therapeutic window.\n4. Follow-up imaging recommended to assess for hemorrhagic transformation and progression of ischemic changes.`;
     };
 
     const handleGenerateReport = () => {
@@ -92,8 +49,8 @@ IMPRESSION:
                 ? 'Acute ischemic stroke in left MCA territory. Recommend immediate intervention.'
                 : 'Acute ischemic stroke involving the left middle cerebral artery territory with early mass effect and midline shift. No hemorrhagic conversion identified. Clinical correlation recommended with immediate consideration for endovascular intervention within the therapeutic window. Follow-up imaging recommended to assess for hemorrhagic transformation and progression of ischemic changes.',
             images: [
-                { url: '/assets/1b9a6f0b7bb7bc8701cafaf2a061f100a2c0ecfb.png', label: 'CT Brain - Axial View' },
-                { url: '/assets/f25826900735c77151f96b7831dafcf98bf45a20.png', label: 'MRI Brain - Axial View' }
+                { url: '/assets/ct_image.png', label: 'CT Brain - Axial View' },
+                { url: '/assets/mri_image.png', label: 'MRI Brain - Axial View' }
             ],
             generatedDate: new Date().toISOString()
         };
