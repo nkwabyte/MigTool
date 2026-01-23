@@ -4,7 +4,8 @@ import {
   FileText,
   Database,
   Eye,
-  ClipboardList
+  ClipboardList,
+  BrainCircuit
 } from 'lucide-react';
 import { ScrollArea } from "./ui/scroll-area";
 
@@ -12,9 +13,10 @@ export function Sidebar() {
   const pathname = usePathname();
 
   const modules = [
-    { id: 'add-dicom', label: 'Add DICOM Data', icon: Database, href: '/add-dicom' },
-    { id: 'viewer', label: 'Image Viewer', icon: Eye, href: '/viewer' },
-    { id: 'dicom', label: 'DICOM Data', icon: FileText, href: '/dicom' },
+    { id: 'add-dicom', label: 'Import DICOM', icon: Database, href: '/add-dicom' },
+    { id: 'ai-image', label: 'AI Image', icon: BrainCircuit, href: '/ai-image' },
+    { id: 'viewer', label: 'Viewer', icon: Eye, href: '/viewer' },
+    { id: 'dicom', label: 'History', icon: FileText, href: '/dicom' },
     { id: 'reports', label: 'Reports', icon: ClipboardList, href: '/reports' },
   ];
 

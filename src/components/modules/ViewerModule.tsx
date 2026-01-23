@@ -1,7 +1,9 @@
+'use client';
+
+import { ViewerLayout } from '../../store/slices/uiSlice';
 import { ImageViewport } from '../ImageViewport';
-import { ViewerLayout } from '../../context/UIContext';
-import mriImage from 'figma:asset/f25826900735c77151f96b7831dafcf98bf45a20.png';
-import ctImage from 'figma:asset/1b9a6f0b7bb7bc8701cafaf2a061f100a2c0ecfb.png';
+import ctImage from '@/src/assets/ct_image.png';
+import mriImage from '@/src/assets/mri_image.png';
 
 interface ViewerModuleProps {
   layout: ViewerLayout;

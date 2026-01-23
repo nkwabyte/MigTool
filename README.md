@@ -1,4 +1,4 @@
-
+adding changes
   # MiGTool
 
   A medical imaging analysis tool built with Next.js and React. The original project is available at https://www.figma.com/design/2y0EGk4nmKsgCqKtkdOJ9a/MiGTool.
