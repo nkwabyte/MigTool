@@ -44,6 +44,8 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "drizzle-orm": "^0.45.1",
+    "dwv": "^0.35.1",
+    "dwv-react": "^1.0.9",
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
     "jose": "^6.1.3",

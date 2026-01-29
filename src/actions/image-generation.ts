@@ -98,7 +98,7 @@ export async function generateReport(imageBase64: string) {
       }
     });
 
-    return { success: true, report: response.text }; //
+    return { success: true, report: response.text };
 
   } catch (error) {
     console.error("Error generating report with Google Gemini:", error);
