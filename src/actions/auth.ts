@@ -47,7 +47,7 @@ export async function signup(prevState: FormState, formData: FormData) {
     const { name, email, password } = validatedFields.data;
 
     // Check if user already exists
-    const existingUser = await db.select().from(users).where(eq(users.email, email)).get();
+    const [existingUser] = await db.select().from(users).where(eq(users.email, email));
 
     if (existingUser) {
         return {
@@ -91,7 +91,7 @@ export async function login(prevState: FormState, formData: FormData) {
 
     const { email, password } = validatedFields.data;
 
-    const user = await db.select().from(users).where(eq(users.email, email)).get();
+    const [user] = await db.select().from(users).where(eq(users.email, email));
 
     if (!user) {
         return {

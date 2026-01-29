@@ -9,7 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@google/genai": "^1.38.0",
     "@libsql/client": "^0.17.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -55,7 +54,6 @@
     "react-day-picker": "^9.13.0",
     "react-dom": "^19.2.3",
     "react-hook-form": "^7.71.1",
-    "react-markdown": "^10.1.0",
     "react-redux": "^9.2.0",
     "react-resizable-panels": "^4.4.1",
     "recharts": "^3.6.0",
@@ -66,6 +64,7 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
     "@types/node": "^25.0.8",
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
@@ -81,5 +80,5 @@
   "engines": {
     "node": "24.x"
   },
-  "packageManager": "pnpm@10.28.2+sha512.41872f037ad22f7348e3b1debbaf7e867cfd448f2726d9cf74c08f19507c31d2c8e7a11525b983febc2df640b5438dee6023ebb1f84ed43cc2d654d2bc326264"
+  "packageManager": "pnpm@10.27.0"
 }
