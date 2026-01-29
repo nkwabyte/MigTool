@@ -37,13 +37,23 @@ export function DicomViewer({ fileUrl, borderColor = 'red' }: DicomViewerProps) 
 
         // Configure DWV
         app.init({
-            dataViewConfigs: { '*': [{ divId: containerRef.current.id }] },
-            tools: {
-                Scroll: {},
-                ZoomAndPan: {},
-                WindowLevel: {},
+            dataViewConfigs: {
+                '*': [{
+                    divId: containerRef.current.id,
+                    orientation: 'axial',
+                    colourMap: 'plain',
+                    opacity: 1,
+                    wlPresetName: 'auto',
+                    windowCenter: 0,
+                    windowWidth: 0
+                }]
             },
-        });
+            tools: {
+                Scroll: { options: [] },
+                ZoomAndPan: { options: [] },
+                WindowLevel: { options: [] },
+            },
+        } as any);
 
         // Load DICOM file
         const loadFile = async () => {
@@ -60,7 +70,7 @@ export function DicomViewer({ fileUrl, borderColor = 'red' }: DicomViewerProps) 
                 await app.loadFiles([file]);
 
                 // Extract metadata
-                const meta = app.getMetaData(0);
+                const meta = app.getMetaData('0');
                 if (meta) {
                     setMetadata({
                         patientName: meta['00100010']?.value?.[0]?.Alphabetic || 'Unknown',
@@ -90,29 +100,14 @@ export function DicomViewer({ fileUrl, borderColor = 'red' }: DicomViewerProps) 
     const handleZoomIn = () => {
         if (dwvApp) {
             dwvApp.setTool('ZoomAndPan');
-            // Trigger zoom in
-            const viewController = dwvApp.getActiveLayerGroup()?.getActiveViewLayer()?.getViewController();
-            if (viewController) {
-                const currentZoom = viewController.getCurrentScrollPosition();
-                viewController.setCurrentPosition({
-                    ...currentZoom,
-                    k: (currentZoom.k || 1) * 1.2,
-                });
-            }
+            // Note: Zoom in/out is handled interactively by the user with mouse wheel or gestures
         }
     };
 
     const handleZoomOut = () => {
         if (dwvApp) {
             dwvApp.setTool('ZoomAndPan');
-            const viewController = dwvApp.getActiveLayerGroup()?.getActiveViewLayer()?.getViewController();
-            if (viewController) {
-                const currentZoom = viewController.getCurrentScrollPosition();
-                viewController.setCurrentPosition({
-                    ...currentZoom,
-                    k: (currentZoom.k || 1) / 1.2,
-                });
-            }
+            // Note: Zoom in/out is handled interactively by the user with mouse wheel or gestures
         }
     };
 

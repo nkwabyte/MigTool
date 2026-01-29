@@ -50,6 +50,111 @@ export async function generateImage(prompt: string, model: string) {
   return { success: false, error: "Invalid model selected" };
 }
 
+/**
+ * Generate an image from an input image using DeCGAN or Att-DeCGAN models
+ * @param imageBase64 - Base64 encoded image
+ * @param model - Model name ('decgan' or 'att-decgan')
+ * @param direction - Translation direction ('A_to_B' for MRI→CT or 'B_to_A' for CT→MRI)
+ */
+export async function generateImageFromImage(
+  imageBase64: string,
+  model: 'decgan' | 'att-decgan',
+  direction: 'A_to_B' | 'B_to_A'
+) {
+  console.log(`Generating image with ${model} model, direction: ${direction}`);
+
+  try {
+    // Dynamic import to avoid issues if package is not installed yet
+    const { Client } = await import('@gradio/client');
+
+    // Remove base64 header if present
+    const base64Data = imageBase64.split(',')[1] || imageBase64;
+
+    // Convert base64 to Blob
+    const byteCharacters = atob(base64Data);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'image/png' });
+
+    // Determine the Hugging Face Space endpoint
+    const spaceEndpoint = model === 'decgan'
+      ? 'RAILKNUST/decgan'
+      : 'RAILKNUST/attndecgan';
+
+    // Connect to the Gradio client
+    const client = await Client.connect(spaceEndpoint);
+
+    // Call the /generate_image endpoint
+    const result = await client.predict('/generate_image', {
+      input_image: blob,
+      direction: direction,
+    });
+
+    console.log('Gradio API result:', result);
+
+    // The result.data should contain the generated image
+    if (result && result.data) {
+      // The API returns the image URL or path
+      const imageData = result.data;
+
+      // If it's a URL, fetch it and convert to base64
+      if (typeof imageData === 'string' && imageData.startsWith('http')) {
+        const imageResponse = await fetch(imageData);
+        const imageBlob = await imageResponse.blob();
+        const arrayBuffer = await imageBlob.arrayBuffer();
+        const base64Image = Buffer.from(arrayBuffer).toString('base64');
+
+        return {
+          success: true,
+          message: `Image translated successfully using ${model}`,
+          image: base64Image
+        };
+      } else if (typeof imageData === 'object' && imageData !== null && (imageData as { url?: string }).url) {
+        // Handle object response with url property
+        const imageResponse = await fetch((imageData as { url: string }).url);
+        const imageBlob = await imageResponse.blob();
+        const arrayBuffer = await imageBlob.arrayBuffer();
+        const base64Image = Buffer.from(arrayBuffer).toString('base64');
+
+        return {
+          success: true,
+          message: `Image translated successfully using ${model}`,
+          image: base64Image
+        };
+      } else {
+        // If it's already base64 or another format
+        return {
+          success: true,
+          message: `Image translated successfully using ${model}`,
+          image: imageData
+        };
+      }
+    } else {
+      console.error('No image data in Gradio response:', result);
+      return { success: false, error: 'Failed to generate image from Gradio API' };
+    }
+
+  } catch (error) {
+    console.error(`Error generating image with ${model}:`, error);
+
+    // Check if the error is due to missing package
+    if (error instanceof Error && error.message.includes('Cannot find module')) {
+      return {
+        success: false,
+        error: 'The @gradio/client package is not installed. Please run: npm install @gradio/client'
+      };
+    }
+
+    return {
+      success: false,
+      error: `Failed to process request with ${model}: ${error instanceof Error ? error.message : 'Unknown error'}`
+    };
+  }
+}
+
 export async function generateReport(imageBase64: string) {
   console.log(`Generating report for image...`);
 

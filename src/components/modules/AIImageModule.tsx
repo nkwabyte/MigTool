@@ -3,7 +3,7 @@
 
 import React, { useState, useTransition } from 'react';
 import { toast } from "sonner";
-import { generateImage, generateReport } from '../../actions/image-generation';
+import { generateImage, generateReport, generateImageFromImage } from '../../actions/image-generation';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -25,9 +25,43 @@ export function AIImageModule() {
     const [generatedImage, setGeneratedImage] = useState<string | null>(null);
     const [isPending, startTransition] = useTransition();
     const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+    const [sourceImage, setSourceImage] = useState<string | null>(null); // For DeCGAN/Att-DeCGAN
+    const [translationDirection, setTranslationDirection] = useState<'A_to_B' | 'B_to_A'>('B_to_A');
     const [report, setReport] = useState<string | null>(null);
 
     const handleGenerateImage = () => {
+        // For DeCGAN and Att-DeCGAN models, use image-to-image translation
+        if (selectedModel === 'decgan' || selectedModel === 'att-decgan') {
+            if (!sourceImage) {
+                toast.error("Please upload a source image");
+                return;
+            }
+
+            startTransition(async () => {
+                try {
+                    const result = await generateImageFromImage(
+                        sourceImage,
+                        selectedModel,
+                        translationDirection
+                    );
+
+                    if (result.success) {
+                        toast.success(result.message || "Image translated successfully");
+                        if (result.image) {
+                            setGeneratedImage(`data:image/png;base64,${result.image}`);
+                        }
+                    } else {
+                        toast.error(result.error || "Failed to translate image");
+                    }
+                } catch (error) {
+                    toast.error("An unexpected error occurred");
+                    console.error(error);
+                }
+            });
+            return;
+        }
+
+        // For nano-banana model, use text-to-image
         if (!prompt) {
             toast.error("Please enter a prompt");
             return;
@@ -42,9 +76,6 @@ export function AIImageModule() {
 
                     if (result.image) {
                         setGeneratedImage(`data:image/png;base64,${result.image}`);
-                    } else if (selectedModel !== 'nano-banana') {
-                        // For other models that might still be simulated
-                        setGeneratedImage('/assets/mri_image.png');
                     }
                 } else {
                     toast.error(result.error || "Failed to generate image");
@@ -62,6 +93,17 @@ export function AIImageModule() {
             reader.onload = (event) => {
                 setUploadedImage(event.target?.result as string);
                 setReport(null); // Clear previous report when new image is uploaded
+            };
+            reader.readAsDataURL(e.target.files[0]);
+        }
+    };
+
+    const handleUploadSourceImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                setSourceImage(event.target?.result as string);
+                setGeneratedImage(null); // Clear previous generated image
             };
             reader.readAsDataURL(e.target.files[0]);
         }
@@ -137,7 +179,11 @@ export function AIImageModule() {
                         </TabsList>
                         <TabsContent value="text-to-image" className="mt-6">
                             <div className="bg-[#2B2B2B] border border-[#3E3E42] rounded-lg p-6">
-                                <h3 className="text-white/80 mb-4">Generate Image from Text Prompt</h3>
+                                <h3 className="text-white/80 mb-4">
+                                    {selectedModel === 'nano-banana'
+                                        ? 'Generate Image from Text Prompt'
+                                        : 'Medical Image Translation'}
+                                </h3>
                                 <div className="flex flex-col gap-4">
                                     <div className="space-y-2">
                                         <Label className="text-white/70">Model</Label>
@@ -152,14 +198,69 @@ export function AIImageModule() {
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                    <Label className="text-white/70">Prompt</Label>
-                                    <Textarea
-                                        placeholder="e.g., Coronal view of a brain MRI with an acute infarct"
-                                        value={prompt}
-                                        onChange={(e) => setPrompt(e.target.value)}
-                                        className="bg-[#1E1E1E] border-[#3E3E42] text-white/80 min-h-[80px]"
-                                        rows={3}
-                                    />
+
+                                    {/* Conditional UI based on selected model */}
+                                    {selectedModel === 'nano-banana' ? (
+                                        // Text-to-Image UI for nano-banana
+                                        <>
+                                            <Label className="text-white/70">Prompt</Label>
+                                            <Textarea
+                                                placeholder="e.g., Coronal view of a brain MRI with an acute infarct"
+                                                value={prompt}
+                                                onChange={(e) => setPrompt(e.target.value)}
+                                                className="bg-[#1E1E1E] border-[#3E3E42] text-white/80 min-h-[80px]"
+                                                rows={3}
+                                            />
+                                        </>
+                                    ) : (
+                                        // Image-to-Image UI for DeCGAN and Att-DeCGAN
+                                        <>
+                                            <div className="space-y-2">
+                                                <Label className="text-white/70">Translation Direction</Label>
+                                                <Select
+                                                    value={translationDirection}
+                                                    onValueChange={(value) => setTranslationDirection(value as 'A_to_B' | 'B_to_A')}
+                                                >
+                                                    <SelectTrigger className="w-full bg-[#1E1E1E] border-[#3E3E42] text-white/80">
+                                                        <SelectValue placeholder="Select direction" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-[#1E1E1E] border-[#3E3E42] text-white/80">
+                                                        <SelectItem value="A_to_B">MRI → CT</SelectItem>
+                                                        <SelectItem value="B_to_A">CT → MRI</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label className="text-white/70">Upload Source Image</Label>
+                                                <div className="h-48 flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-lg cursor-pointer transition-all bg-[#1E1E1E] border-[#3E3E42] hover:bg-[#3E3E42] hover:border-[#00A9E0]/50 relative">
+                                                    <Upload className="h-8 w-8 text-[#00A9E0]" />
+                                                    <div className="text-center">
+                                                        <div className="text-white/80">Click to upload</div>
+                                                        <div className="text-xs text-white/50 mt-1">
+                                                            {translationDirection === 'A_to_B' ? 'Upload MRI image' : 'Upload CT image'}
+                                                        </div>
+                                                    </div>
+                                                    <Input
+                                                        type="file"
+                                                        onChange={handleUploadSourceImage}
+                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                        accept="image/*"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {sourceImage && (
+                                                <div>
+                                                    <Label className="text-white/70">Source Image Preview</Label>
+                                                    <div className="mt-2 border-2 border-dashed border-[#3E3E42] rounded-lg p-4 flex justify-center">
+                                                        <img src={sourceImage} alt="Source" className="max-w-full h-auto max-h-64 rounded" />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+
                                     <Button
                                         onClick={handleGenerateImage}
                                         disabled={isPending}
