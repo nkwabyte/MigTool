@@ -11,6 +11,9 @@ importers:
       '@google/genai':
         specifier: ^1.38.0
         version: 1.38.0
+      '@gradio/client':
+        specifier: ^2.0.4
+        version: 2.0.4
       '@libsql/client':
         specifier: ^0.17.0
         version: 0.17.0
@@ -712,6 +715,10 @@ packages:
     peerDependenciesMeta:
       '@modelcontextprotocol/sdk':
         optional: true
+
+  '@gradio/client@2.0.4':
+    resolution: {integrity: sha512-pYywxUpamTYQLca01YAlTBwr2eb3H8d9s7geeQdexuPkM7p+EN2LhyzgNRN4yZrpn4swwfwP1fOoadKgd1b6Ww==}
+    engines: {node: '>=18.0.0'}
 
   '@img/colour@1.0.0':
     resolution: {integrity: sha512-A5P/LfWGFSl6nsckYtjw9da+19jB8hkJ6ACTGcDfEJ0aE+l2n2El7dsVM7UVHZQ9s2lmYMWlrS21YLy2IR1LUw==}
@@ -2360,6 +2367,9 @@ packages:
     resolution: {integrity: sha512-7yAQpD2UMJzLi1Dqv7qFYnPbaPx7ZfFK6PiIxQ4PfkGPyNyl2Ugx+a/umUonmKqjhM4DnfbMvdX6otXq83soQQ==}
     engines: {node: ^12.20 || >= 14.13}
 
+  fetch-event-stream@0.1.6:
+    resolution: {integrity: sha512-GREtJ5HNikdU2AXtZ6E/5bk+aslMU6ie5mPG6H9nvsdDkkHQ6m5lHwmmmDTOBexok9hApQ7EprsXCdmz9ZC68w==}
+
   fflate@0.8.2:
     resolution: {integrity: sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A==}
 
@@ -3655,6 +3665,10 @@ snapshots:
       - bufferutil
       - supports-color
       - utf-8-validate
+
+  '@gradio/client@2.0.4':
+    dependencies:
+      fetch-event-stream: 0.1.6
 
   '@img/colour@1.0.0':
     optional: true
@@ -5203,6 +5217,8 @@ snapshots:
     dependencies:
       node-domexception: 1.0.0
       web-streams-polyfill: 3.3.3
+
+  fetch-event-stream@0.1.6: {}
 
   fflate@0.8.2: {}
 
