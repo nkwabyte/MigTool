@@ -2,6 +2,11 @@
 const nextConfig = {
     reactStrictMode: true,
     serverExternalPackages: ['better-sqlite3'],
+    experimental: {
+        serverActions: {
+            bodySizeLimit: '10mb',
+        },
+    },
 };
 
 module.exports = nextConfig;

@@ -1,6 +1,6 @@
 'use server';
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI, HarmBlockThreshold, HarmCategory } from "@google/genai";
 
 export async function generateImage(prompt: string, model: string) {
   console.log(`Generating image with model: ${model} and prompt: ${prompt}`);
@@ -11,28 +11,36 @@ export async function generateImage(prompt: string, model: string) {
       return { success: false, error: "Google Gemini API Key is missing" };
     }
 
+    // Use Imagen 4 for image generation
     try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      // Using gemini-1.5-pro as requested (most recent/capable)
-      const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+      const ai = new GoogleGenAI({ apiKey });
+      // // get and show all the models from google genai
+      // const models = await ai.models.list();
+      // console.log(models);
+      const response = await ai.models.generateImages({
+        model: 'imagen-4.0-fast-generate-001',
+        prompt: prompt,
+        config: {
+          numberOfImages: 1,
+        }
+      });
 
-      const result = await geminiModel.generateContent([
-        `Generate a detailed description for an image based on this prompt: ${prompt}. The description should be suitable for an image generation model.`
-      ]);
+      const generatedImage = response.generatedImages?.[0]?.image?.imageBytes;
 
-      const response = await result.response;
-      const text = response.text();
-
-      console.log("Gemini response:", text);
-
-      return {
-        success: true,
-        message: "Gemini (Nano Banana / 1.5 Pro) processed request successfully. (Image generation simulated)",
-      };
+      if (generatedImage) {
+        return {
+          success: true,
+          message: "Image generated successfully.",
+          image: generatedImage // Return base64 image data
+        };
+      } else {
+        console.error("No image data in response:", response);
+        return { success: false, error: "Failed to generate image data" };
+      }
 
     } catch (error) {
-      console.error("Error generating content with Google Gemini:", error);
-      return { success: false, error: "Failed to process request with Google Gemini" };
+      console.error("Error generating image with Google Imagen:", error);
+      return { success: false, error: "Failed to process request with Google Imagen" };
     }
   } else if (model === 'decgan' || model === 'att-decgan') {
     // Logic for custom models (placeholder)
@@ -51,8 +59,7 @@ export async function generateReport(imageBase64: string) {
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+    const ai = new GoogleGenAI({ apiKey });
 
     // Remove header if present (e.g., "data:image/jpeg;base64,")
     const base64Data = imageBase64.split(',')[1] || imageBase64;
@@ -63,20 +70,35 @@ export async function generateReport(imageBase64: string) {
     else if (imageBase64.includes("data:image/png")) mimeType = "image/png";
     else if (imageBase64.includes("data:image/webp")) mimeType = "image/webp";
 
-    const imagePart = {
-      inlineData: {
-        data: base64Data,
-        mimeType: mimeType
-      },
-    };
+    const prompt = "Analyze this medical image and provide a detailed report. Return ONLY the report in Markdown format. Do not include any conversational filler (e.g., 'Here is the report', 'Of course'). Do not use em-dashes (—); use standard dashes (-) or rephrase to avoid them. Structure the report with clear headers (##, ###), detailed Paragraphs, and bullet points.";
 
-    const prompt = "Analyze this medical image and provide a detailed report describing what you see. Identify any anatomical structures, abnormalities, or key features.";
+    const response = await ai.models.generateContent({
+      /// check the model_options.ts file for available models
+      model: 'gemini-2.5-pro', // 'gemini-2.5-flash', // 
+      contents: [
+        {
+          parts: [
+            { text: prompt },
+            {
+              inlineData: {
+                data: base64Data,
+                mimeType: mimeType
+              }
+            }
+          ]
+        }
+      ],
+      config: {
+        safetySettings: [
+          { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+          { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+          { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+          { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+        ],
+      }
+    });
 
-    const result = await model.generateContent([prompt, imagePart]);
-    const response = await result.response;
-    const text = response.text();
-
-    return { success: true, report: text };
+    return { success: true, report: response.text }; //
 
   } catch (error) {
     console.error("Error generating report with Google Gemini:", error);
