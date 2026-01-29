@@ -1,17 +1,21 @@
 'use client'
 
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { FolderOpen, HardDrive, Upload, FileText, CheckCircle2, X } from "lucide-react";
 import { Separator } from "../ui/separator";
 import { useState, useRef } from "react";
+import { toast } from "sonner";
+import { saveImportSession } from "@/src/actions/dicom-history";
+import { importDicomFiles } from "@/src/actions/dicom-import";
+import { useRouter } from "next/navigation";
 
 interface UploadedFile {
   name: string;
   size: number;
   path: string;
+  file: File; // Keep reference to actual File object
 }
 
 export function AddDicomDataModule() {
@@ -19,8 +23,13 @@ export function AddDicomDataModule() {
   const [isDraggingFiles, setIsDraggingFiles] = useState(false);
   const [isDraggingFolder, setIsDraggingFolder] = useState(false);
   const [rejectedFiles, setRejectedFiles] = useState<string[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [processingStats, setProcessingStats] = useState({ current: 0, total: 0 });
+  const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   const handleFileDrop = (e: React.DragEvent, isFolder: boolean = false) => {
     e.preventDefault();
@@ -29,13 +38,13 @@ export function AddDicomDataModule() {
     setIsDraggingFolder(false);
 
     const files = Array.from(e.dataTransfer.files);
-    processFiles(files);
+    processFiles(files, isFolder);
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, isFolder: boolean = false) => {
     const files = e.target.files;
     if (files) {
-      processFiles(Array.from(files));
+      processFiles(Array.from(files), isFolder);
     }
   };
 
@@ -43,10 +52,10 @@ export function AddDicomDataModule() {
     // Check file extension first
     const validExtensions = ['.dcm', '.dicom', '.DCM', '.DICOM'];
     const hasValidExtension = validExtensions.some(ext => file.name.toLowerCase().endsWith(ext.toLowerCase()));
-    
+
     // Files with no extension might be DICOM too
     const hasNoExtension = !file.name.includes('.');
-    
+
     if (!hasValidExtension && !hasNoExtension) {
       return false;
     }
@@ -55,7 +64,7 @@ export function AddDicomDataModule() {
     try {
       const buffer = await file.slice(0, 132).arrayBuffer();
       const bytes = new Uint8Array(buffer);
-      
+
       // DICOM files have "DICM" at byte offset 128
       if (bytes.length >= 132) {
         const dicmString = String.fromCharCode(bytes[128], bytes[129], bytes[130], bytes[131]);
@@ -63,7 +72,7 @@ export function AddDicomDataModule() {
           return true;
         }
       }
-      
+
       // If no DICM signature but has valid extension, still accept it
       return hasValidExtension || hasNoExtension;
     } catch (error) {
@@ -72,31 +81,63 @@ export function AddDicomDataModule() {
     }
   };
 
-  const processFiles = async (files: File[]) => {
+  const processFiles = async (files: File[], silent: boolean = false) => {
     const rejected: string[] = [];
     const validFiles: UploadedFile[] = [];
+    const totalFiles = files.length;
 
-    for (const file of files) {
+    if (totalFiles === 0) return;
+
+    setIsProcessing(true);
+    setUploadProgress(0);
+    setProcessingStats({ current: 0, total: totalFiles });
+
+    // Show processing toast
+    const toastId = toast.loading(`Processing ${totalFiles} file(s)...`);
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       const isValid = await isDicomFile(file);
+
       if (isValid) {
         validFiles.push({
           name: file.name,
           size: file.size,
-          path: file.webkitRelativePath || file.name
+          path: file.webkitRelativePath || file.name,
+          file: file, // Store the actual File object
         });
       } else {
         rejected.push(file.name);
       }
+
+      // Update progress
+      const progress = Math.round(((i + 1) / totalFiles) * 100);
+      setUploadProgress(progress);
+      setProcessingStats({ current: i + 1, total: totalFiles });
     }
+
+    // Dismiss loading toast
+    toast.dismiss(toastId);
 
     if (validFiles.length > 0) {
       setUploadedFiles(prev => [...prev, ...validFiles]);
+      toast.success(
+        `Found ${validFiles.length} valid DICOM file(s)${rejected.length > 0 ? ` (${rejected.length} skipped)` : ''}`,
+        { duration: 3000 }
+      );
+    } else if (files.length > 0) {
+      toast.error("No valid DICOM files found in the selected folder", { duration: 4000 });
     }
 
+    // Always show rejected files in UI for better visibility
     if (rejected.length > 0) {
       setRejectedFiles(rejected);
-      setTimeout(() => setRejectedFiles([]), 5000); // Clear after 5 seconds
+      setTimeout(() => setRejectedFiles([]), 12000); // Increased to 12 seconds for better visibility
     }
+
+    setIsProcessing(false);
+    setUploadProgress(0);
+    setProcessingStats({ current: 0, total: 0 });
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -136,11 +177,66 @@ export function AddDicomDataModule() {
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
-  const handleImport = () => {
-    // Simulate import process
-    console.log('Importing files:', uploadedFiles);
-    // In a real application, this would process the DICOM files
-    alert(`Importing ${uploadedFiles.length} file(s)...`);
+  const handleImport = async () => {
+    if (uploadedFiles.length === 0) return;
+
+    setIsImporting(true);
+    const toastId = toast.loading(`Importing ${uploadedFiles.length} file(s)...`);
+
+    try {
+      // Create FormData with actual File objects
+      const formData = new FormData();
+      uploadedFiles.forEach(({ file }) => {
+        formData.append('files', file);
+      });
+
+      // Save files to server
+      const uploadResult = await importDicomFiles(formData);
+
+      if (!uploadResult.success || !uploadResult.sessionId) {
+        toast.dismiss(toastId);
+        toast.error(uploadResult.error || 'Failed to upload files', { duration: 4000 });
+        return;
+      }
+
+      // Save import session to database with file paths
+      const filesMetadata = uploadedFiles.map((f, index) => ({
+        name: f.name,
+        size: f.size,
+        path: `/uploads/dicom/${uploadResult.sessionId}/${f.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`,
+      }));
+
+      const result = await saveImportSession(filesMetadata);
+
+      if (!result.success) {
+        toast.dismiss(toastId);
+        if (result.error === 'Not authenticated') {
+          toast.error('Please login to import files', { duration: 4000 });
+          router.push('/login');
+        } else {
+          toast.error(result.error || 'Failed to save import session', { duration: 4000 });
+        }
+        return;
+      }
+
+      toast.dismiss(toastId);
+      toast.success(`Successfully imported ${uploadedFiles.length} file(s)!`, {
+        duration: 3000,
+        action: {
+          label: 'View History',
+          onClick: () => router.push('/dicom')
+        }
+      });
+
+      // Clear uploaded files
+      setUploadedFiles([]);
+    } catch (error) {
+      toast.dismiss(toastId);
+      toast.error('Failed to import files. Please try again.', { duration: 4000 });
+      console.error('Import error:', error);
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   return (
@@ -152,26 +248,19 @@ export function AddDicomDataModule() {
         </div>
 
         <TabsList className="bg-[#2B2B2B] border border-[#3E3E42] w-full">
-          <TabsTrigger 
+          <TabsTrigger
             value="local"
             className="text-white/70 data-[state=active]:bg-[#00A9E0] data-[state=active]:text-white flex-1"
           >
             <HardDrive className="h-4 w-4 mr-2" />
-            Local Files
-          </TabsTrigger>
-          <TabsTrigger 
-            value="dicomdir"
-            className="text-white/70 data-[state=active]:bg-[#00A9E0] data-[state=active]:text-white flex-1"
-          >
-            <FolderOpen className="h-4 w-4 mr-2" />
-            DICOMDIR
+            DICOM Files
           </TabsTrigger>
         </TabsList>
 
         {/* Local Files Tab */}
         <TabsContent value="local" className="mt-6">
           <div className="bg-[#2B2B2B] border border-[#3E3E42] rounded-lg p-6">
-            <h3 className="text-white/80 mb-4">Import from Local Storage</h3>
+            <h3 className="text-white/80 mb-4">Select DICOM Data</h3>
             <p className="text-sm text-white/60 mb-6">
               Select DICOM files (.dcm, .dicom) or folders containing DICOM images. Only valid DICOM medical imaging files will be accepted.
             </p>
@@ -187,11 +276,10 @@ export function AddDicomDataModule() {
                     onDragEnter={(e) => handleDragEnter(e, true)}
                     onDragLeave={(e) => handleDragLeave(e, true)}
                     onClick={() => folderInputRef.current?.click()}
-                    className={`h-32 flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-lg cursor-pointer transition-all ${
-                      isDraggingFolder
-                        ? 'bg-[#00A9E0]/20 border-[#00A9E0]'
-                        : 'bg-[#1E1E1E] border-[#3E3E42] hover:bg-[#3E3E42] hover:border-[#00A9E0]/50'
-                    }`}
+                    className={`h-32 flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-lg cursor-pointer transition-all ${isDraggingFolder
+                      ? 'bg-[#00A9E0]/20 border-[#00A9E0]'
+                      : 'bg-[#1E1E1E] border-[#3E3E42] hover:bg-[#3E3E42] hover:border-[#00A9E0]/50'
+                      }`}
                   >
                     <FolderOpen className="h-8 w-8 text-[#00A9E0]" />
                     <div className="text-center">
@@ -206,8 +294,7 @@ export function AddDicomDataModule() {
                     webkitdirectory=""
                     directory=""
                     multiple
-                    accept=".dcm,.dicom,.DCM,.DICOM"
-                    onChange={handleFileSelect}
+                    onChange={(e) => handleFileSelect(e, true)}
                     className="hidden"
                   />
 
@@ -218,11 +305,10 @@ export function AddDicomDataModule() {
                     onDragEnter={(e) => handleDragEnter(e, false)}
                     onDragLeave={(e) => handleDragLeave(e, false)}
                     onClick={() => fileInputRef.current?.click()}
-                    className={`h-32 flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-lg cursor-pointer transition-all ${
-                      isDraggingFiles
-                        ? 'bg-[#00A9E0]/20 border-[#00A9E0]'
-                        : 'bg-[#1E1E1E] border-[#3E3E42] hover:bg-[#3E3E42] hover:border-[#00A9E0]/50'
-                    }`}
+                    className={`h-32 flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-lg cursor-pointer transition-all ${isDraggingFiles
+                      ? 'bg-[#00A9E0]/20 border-[#00A9E0]'
+                      : 'bg-[#1E1E1E] border-[#3E3E42] hover:bg-[#3E3E42] hover:border-[#00A9E0]/50'
+                      }`}
                   >
                     <Upload className="h-8 w-8 text-[#00A9E0]" />
                     <div className="text-center">
@@ -234,12 +320,29 @@ export function AddDicomDataModule() {
                     ref={fileInputRef}
                     type="file"
                     multiple
-                    accept=".dcm,.dicom,.DCM,.DICOM"
-                    onChange={handleFileSelect}
+                    onChange={(e) => handleFileSelect(e, false)}
                     className="hidden"
                   />
                 </div>
               </div>
+
+              {/* Progress Bar */}
+              {isProcessing && (
+                <div className="bg-[#1E1E1E] border border-[#3E3E42] rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-white/70">
+                      Processing files... ({processingStats.current}/{processingStats.total})
+                    </span>
+                    <span className="text-sm text-white/70">{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full bg-[#2B2B2B] rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-[#00A9E0] h-full transition-all duration-300 ease-out"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
 
               <Separator className="bg-[#3E3E42]" />
 
@@ -247,7 +350,7 @@ export function AddDicomDataModule() {
               {rejectedFiles.length > 0 && (
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
                   <div className="flex items-start gap-3">
-                    <X className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
+                    <X className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <p className="text-sm text-red-400 font-medium mb-1">
                         {rejectedFiles.length} file(s) rejected - Not valid DICOM images
@@ -273,7 +376,7 @@ export function AddDicomDataModule() {
                         className="flex items-center justify-between p-3 border-b border-[#3E3E42] last:border-b-0 hover:bg-[#2B2B2B]"
                       >
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <FileText className="h-4 w-4 text-[#00A9E0] flex-shrink-0" />
+                          <FileText className="h-4 w-4 text-[#00A9E0] shrink-0" />
                           <div className="min-w-0 flex-1">
                             <p className="text-sm text-white/80 truncate">{file.name}</p>
                             <p className="text-xs text-white/50">{formatFileSize(file.size)}</p>
@@ -283,7 +386,7 @@ export function AddDicomDataModule() {
                           onClick={() => removeFile(index)}
                           size="sm"
                           variant="ghost"
-                          className="text-white/60 hover:text-red-400 hover:bg-red-400/10 h-8 w-8 p-0 flex-shrink-0"
+                          className="text-white/60 hover:text-red-400 hover:bg-red-400/10 h-8 w-8 p-0 shrink-0"
                         >
                           <X className="h-4 w-4" />
                         </Button>
@@ -304,9 +407,9 @@ export function AddDicomDataModule() {
                     </span>
                   )}
                 </div>
-                <Button 
+                <Button
                   onClick={handleImport}
-                  disabled={uploadedFiles.length === 0}
+                  disabled={uploadedFiles.length === 0 || isProcessing}
                   className="bg-[#00A9E0] hover:bg-[#0090C0] text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Import
@@ -316,54 +419,7 @@ export function AddDicomDataModule() {
           </div>
         </TabsContent>
 
-        {/* DICOMDIR Tab */}
-        <TabsContent value="dicomdir" className="mt-6">
-          <div className="bg-[#2B2B2B] border border-[#3E3E42] rounded-lg p-6">
-            <h3 className="text-white/80 mb-4">Import from DICOMDIR</h3>
-            <p className="text-sm text-white/60 mb-6">
-              Load studies from a DICOMDIR file, typically found on medical imaging CDs/DVDs.
-            </p>
 
-            <div className="space-y-4">
-              <div className="border-2 border-dashed border-[#3E3E42] rounded-lg p-12 text-center">
-                <FolderOpen className="h-12 w-12 text-white/30 mx-auto mb-4" />
-                <p className="text-white/60 mb-2">Drop DICOMDIR file here</p>
-                <p className="text-xs text-white/50 mb-4">or</p>
-                <Button 
-                  variant="outline"
-                  className="bg-[#1E1E1E] border-[#3E3E42] text-white/80 hover:bg-[#3E3E42]"
-                >
-                  Browse for DICOMDIR
-                </Button>
-              </div>
-
-              <Separator className="bg-[#3E3E42]" />
-
-              <div className="space-y-2">
-                <Label className="text-white/70">DICOMDIR Path</Label>
-                <div className="flex gap-2">
-                  <Input 
-                    placeholder="/media/cdrom/DICOMDIR"
-                    className="bg-[#1E1E1E] border-[#3E3E42] text-white/80"
-                    readOnly
-                  />
-                  <Button 
-                    variant="outline"
-                    className="bg-[#2B2B2B] border-[#3E3E42] text-white/80 hover:bg-[#3E3E42]"
-                  >
-                    Browse
-                  </Button>
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-4">
-                <Button className="bg-[#00A9E0] hover:bg-[#0090C0] text-white">
-                  Load DICOMDIR
-                </Button>
-              </div>
-            </div>
-          </div>
-        </TabsContent>
       </Tabs>
     </div>
   );

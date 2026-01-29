@@ -1,0 +1,92 @@
+
+API documentation
+RAILKNUST/attndecgan
+
+API Recorder
+
+1 API endpoint
+
+
+Choose one of the following ways to interact with the API.
+
+1. Install the javascript client (docs) if you don't already have it installed.
+
+copy
+$ npm i -D @gradio/client
+2. Find the API endpoint below corresponding to your desired function in the app. Copy the code snippet, replacing the placeholder values with your own input data. If this is a private Space, you may need to pass your Hugging Face token as well (read more). Or use the 
+API Recorder
+
+ to automatically generate your API requests.
+
+API name: /generate_image
+copy
+import { Client } from "@gradio/client";
+
+const response_0 = await fetch("https://raw.githubusercontent.com/gradio-app/gradio/main/test/test_files/bus.png");
+const exampleImage = await response_0.blob();
+						
+const client = await Client.connect("RAILKNUST/attndecgan");
+const result = await client.predict("/generate_image", { 
+				input_image: exampleImage, 		
+		direction: "A_to_B", 
+});
+
+console.log(result.data);
+Accepts 2 parameters:
+input_image Blob | File | Buffer Required
+
+The input value that is provided in the "Input Image" Image component. For input, either path or url must be provided. For output, path is always provided.
+
+direction string Default: "A_to_B"
+
+The input value that is provided in the "Translation Direction" Dropdown component.
+
+
+
+
+API documentation
+RAILKNUST/decgan
+
+API Recorder
+
+1 API endpoint
+
+
+Choose one of the following ways to interact with the API.
+
+1. Install the javascript client (docs) if you don't already have it installed.
+
+copy
+$ npm i -D @gradio/client
+2. Find the API endpoint below corresponding to your desired function in the app. Copy the code snippet, replacing the placeholder values with your own input data. If this is a private Space, you may need to pass your Hugging Face token as well (read more). Or use the 
+API Recorder
+
+ to automatically generate your API requests.
+
+API name: /generate_image
+copy
+import { Client } from "@gradio/client";
+
+const response_0 = await fetch("https://raw.githubusercontent.com/gradio-app/gradio/main/test/test_files/bus.png");
+const exampleImage = await response_0.blob();
+						
+const client = await Client.connect("RAILKNUST/decgan");
+const result = await client.predict("/generate_image", { 
+				input_image: exampleImage, 		
+		direction: "A_to_B", 
+});
+
+console.log(result.data);
+Accepts 2 parameters:
+input_image Blob | File | Buffer Required
+
+The input value that is provided in the "Input Image" Image component. For input, either path or url must be provided. For output, path is always provided.
+
+direction string Default: "A_to_B"
+
+The input value that is provided in the "Translation Direction" Dropdown component.
+
+Returns 1 element
+string
+
+The output value that appears in the "Generated Image" Image component.
