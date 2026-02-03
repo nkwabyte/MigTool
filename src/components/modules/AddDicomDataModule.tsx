@@ -50,7 +50,7 @@ export function AddDicomDataModule() {
 
   const isDicomFile = async (file: File): Promise<boolean> => {
     // Check file extension first
-    const validExtensions = ['.dcm', '.dicom', '.DCM', '.DICOM'];
+    const validExtensions = ['.dcm', '.dicom', '.DCM', '.DICOM', '.zip', '.ZIP'];
     const hasValidExtension = validExtensions.some(ext => file.name.toLowerCase().endsWith(ext.toLowerCase()));
 
     // Files with no extension might be DICOM too
@@ -199,11 +199,12 @@ export function AddDicomDataModule() {
         return;
       }
 
-      // Save import session to database with file paths
-      const filesMetadata = uploadedFiles.map((f, index) => ({
+      // Save import session to database with file paths from server response
+      // If savedFiles is returned (new zip logic), use it. Otherwise fallback to client-side derived paths (legacy/fallback)
+      const filesMetadata = uploadResult.savedFiles || uploadedFiles.map((f) => ({
         name: f.name,
         size: f.size,
-        path: `/uploads/dicom/${uploadResult.sessionId}/${f.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`,
+        path: `/dicom/${uploadResult.sessionId}/${f.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`,
       }));
 
       const result = await saveImportSession(filesMetadata);

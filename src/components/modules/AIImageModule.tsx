@@ -4,13 +4,15 @@
 import React, { useState, useTransition } from 'react';
 import { toast } from "sonner";
 import { generateImage, generateReport, generateImageFromImage } from '../../actions/image-generation';
+import { saveGeneratedImage } from '../../actions/save-image';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { Upload, Brain, Bot, Download, FileText } from 'lucide-react';
+import { Upload, Brain, Bot, Download, FileText, MessageCircle } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { Textarea } from '../ui/textarea';
+import { ImageChatSidebar } from '../ImageChatSidebar';
 import {
     Select,
     SelectContent,
@@ -26,8 +28,10 @@ export function AIImageModule() {
     const [isPending, startTransition] = useTransition();
     const [uploadedImage, setUploadedImage] = useState<string | null>(null);
     const [sourceImage, setSourceImage] = useState<string | null>(null); // For DeCGAN/Att-DeCGAN
-    const [translationDirection, setTranslationDirection] = useState<'A_to_B' | 'B_to_A'>('B_to_A');
+    const [translationDirection, setTranslationDirection] = useState<'A_to_B' | 'B_to_A'>('A_to_B');
     const [report, setReport] = useState<string | null>(null);
+    const [savedImageId, setSavedImageId] = useState<string | null>(null);
+    const [isChatOpen, setIsChatOpen] = useState(false);
 
     const handleGenerateImage = () => {
         // For DeCGAN and Att-DeCGAN models, use image-to-image translation
@@ -48,7 +52,21 @@ export function AIImageModule() {
                     if (result.success) {
                         toast.success(result.message || "Image translated successfully");
                         if (result.image) {
-                            setGeneratedImage(`data:image/png;base64,${result.image}`);
+                            const imageData = `data:image/png;base64,${result.image}`;
+                            setGeneratedImage(imageData);
+
+                            // Save image to database
+                            const saveResult = await saveGeneratedImage(
+                                imageData,
+                                selectedModel as 'nano-banana' | 'decgan' | 'att-decgan',
+                                'default-user', // TODO: Replace with actual user ID from session
+                                undefined,
+                                translationDirection
+                            );
+
+                            if (saveResult.success && saveResult.imageId) {
+                                setSavedImageId(saveResult.imageId);
+                            }
                         }
                     } else {
                         toast.error(result.error || "Failed to translate image");
@@ -75,7 +93,20 @@ export function AIImageModule() {
                     toast.success(result.message || "Image generated successfully");
 
                     if (result.image) {
-                        setGeneratedImage(`data:image/png;base64,${result.image}`);
+                        const imageData = `data:image/png;base64,${result.image}`;
+                        setGeneratedImage(imageData);
+
+                        // Save image to database
+                        const saveResult = await saveGeneratedImage(
+                            imageData,
+                            selectedModel as 'nano-banana' | 'decgan' | 'att-decgan',
+                            'default-user', // TODO: Replace with actual user ID from session
+                            prompt
+                        );
+
+                        if (saveResult.success && saveResult.imageId) {
+                            setSavedImageId(saveResult.imageId);
+                        }
                     }
                 } else {
                     toast.error(result.error || "Failed to generate image");
@@ -107,6 +138,20 @@ export function AIImageModule() {
             };
             reader.readAsDataURL(e.target.files[0]);
         }
+    };
+
+    const handleModelChange = (model: string) => {
+        setSelectedModel(model);
+        setGeneratedImage(null); // Clear generated image when model changes
+        setSavedImageId(null); // Clear saved image ID
+        setIsChatOpen(false); // Close chat
+    };
+
+    const handleDirectionChange = (direction: 'A_to_B' | 'B_to_A') => {
+        setTranslationDirection(direction);
+        setGeneratedImage(null); // Clear generated image when direction changes
+        setSavedImageId(null); // Clear saved image ID
+        setIsChatOpen(false); // Close chat
     };
 
     const handleGenerateReport = () => {
@@ -187,7 +232,7 @@ export function AIImageModule() {
                                 <div className="flex flex-col gap-4">
                                     <div className="space-y-2">
                                         <Label className="text-white/70">Model</Label>
-                                        <Select value={selectedModel} onValueChange={setSelectedModel}>
+                                        <Select value={selectedModel} onValueChange={handleModelChange}>
                                             <SelectTrigger className="w-full bg-[#1E1E1E] border-[#3E3E42] text-white/80">
                                                 <SelectValue placeholder="Select a model" />
                                             </SelectTrigger>
@@ -219,14 +264,14 @@ export function AIImageModule() {
                                                 <Label className="text-white/70">Translation Direction</Label>
                                                 <Select
                                                     value={translationDirection}
-                                                    onValueChange={(value) => setTranslationDirection(value as 'A_to_B' | 'B_to_A')}
+                                                    onValueChange={(value) => handleDirectionChange(value as 'A_to_B' | 'B_to_A')}
                                                 >
                                                     <SelectTrigger className="w-full bg-[#1E1E1E] border-[#3E3E42] text-white/80">
                                                         <SelectValue placeholder="Select direction" />
                                                     </SelectTrigger>
                                                     <SelectContent className="bg-[#1E1E1E] border-[#3E3E42] text-white/80">
-                                                        <SelectItem value="A_to_B">MRI → CT</SelectItem>
-                                                        <SelectItem value="B_to_A">CT → MRI</SelectItem>
+                                                        <SelectItem value="A_to_B">CT → MRI</SelectItem>
+                                                        <SelectItem value="B_to_A">MRI → CT</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -238,7 +283,7 @@ export function AIImageModule() {
                                                     <div className="text-center">
                                                         <div className="text-white/80">Click to upload</div>
                                                         <div className="text-xs text-white/50 mt-1">
-                                                            {translationDirection === 'A_to_B' ? 'Upload MRI image' : 'Upload CT image'}
+                                                            {translationDirection === 'A_to_B' ? 'Upload CT image' : 'Upload MRI image'}
                                                         </div>
                                                     </div>
                                                     <Input
@@ -273,15 +318,28 @@ export function AIImageModule() {
                                     <div className="mt-6">
                                         <div className="flex justify-between items-center">
                                             <Label className="text-white/70">Generated Image</Label>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={handleDownloadImage}
-                                                className="text-white/70 hover:text-white hover:bg-[#3E3E42]"
-                                            >
-                                                <Download className="h-4 w-4 mr-2" />
-                                                Download
-                                            </Button>
+                                            <div className="flex gap-2">
+                                                {savedImageId && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => setIsChatOpen(true)}
+                                                        className="text-white/70 hover:text-white hover:bg-[#3E3E42]"
+                                                    >
+                                                        <MessageCircle className="h-4 w-4 mr-2" />
+                                                        Chat with AI
+                                                    </Button>
+                                                )}
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={handleDownloadImage}
+                                                    className="text-white/70 hover:text-white hover:bg-[#3E3E42]"
+                                                >
+                                                    <Download className="h-4 w-4 mr-2" />
+                                                    Download
+                                                </Button>
+                                            </div>
                                         </div>
                                         <div className="mt-2 border-2 border-dashed border-[#3E3E42] rounded-lg p-4 flex justify-center relative">
                                             <img src={generatedImage} alt="Generated" className="max-w-full h-auto rounded" />
@@ -361,6 +419,14 @@ export function AIImageModule() {
                     </Tabs>
                 </div>
             </div>
+
+            {/* Chat Sidebar */}
+            {isChatOpen && savedImageId && (
+                <ImageChatSidebar
+                    imageId={savedImageId}
+                    onClose={() => setIsChatOpen(false)}
+                />
+            )}
         </div>
     );
 }

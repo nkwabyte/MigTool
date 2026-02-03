@@ -101,6 +101,9 @@ importers:
       '@tailwindcss/postcss':
         specifier: ^4.1.18
         version: 4.1.18
+      adm-zip:
+        specifier: ^0.5.16
+        version: 0.5.16
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
@@ -183,6 +186,9 @@ importers:
         specifier: ^4.3.5
         version: 4.3.5
     devDependencies:
+      '@types/adm-zip':
+        specifier: ^0.5.7
+        version: 0.5.7
       '@types/node':
         specifier: ^25.0.8
         version: 25.0.10
@@ -1812,6 +1818,9 @@ packages:
   '@tsconfig/node16@1.0.4':
     resolution: {integrity: sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==}
 
+  '@types/adm-zip@0.5.7':
+    resolution: {integrity: sha512-DNEs/QvmyRLurdQPChqq0Md4zGvPwHerAJYWk9l2jCbD1VPpnzRJorOdiq4zsw09NFbYnhfsoEhWtxIzXpn2yw==}
+
   '@types/better-sqlite3@7.6.13':
     resolution: {integrity: sha512-NMv9ASNARoKksWtsq/SHakpYAYnhBrQgGD8zkLYk/jaK8jUGn08CfEdTRgYhMypUQAfzSP8W6gNLe0q19/t4VA==}
 
@@ -1917,6 +1926,10 @@ packages:
     resolution: {integrity: sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==}
     engines: {node: '>=0.4.0'}
     hasBin: true
+
+  adm-zip@0.5.16:
+    resolution: {integrity: sha512-TGw5yVi4saajsSEgz25grObGHEUaDrniwvA2qwSC060KfqGPdglhvPMA2lPIoxs3PQIItj2iag35fONcQqgUaQ==}
+    engines: {node: '>=12.0'}
 
   agent-base@7.1.4:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
@@ -4688,6 +4701,10 @@ snapshots:
 
   '@tsconfig/node16@1.0.4': {}
 
+  '@types/adm-zip@0.5.7':
+    dependencies:
+      '@types/node': 25.0.10
+
   '@types/better-sqlite3@7.6.13':
     dependencies:
       '@types/node': 25.0.10
@@ -4792,6 +4809,8 @@ snapshots:
       acorn: 8.15.0
 
   acorn@8.15.0: {}
+
+  adm-zip@0.5.16: {}
 
   agent-base@7.1.4: {}
 
