@@ -13,8 +13,8 @@ export function Sidebar() {
   const pathname = usePathname();
 
   const modules = [
-    { id: 'add-dicom', label: 'Import DICOM', icon: Database, href: '/add-dicom' },
     { id: 'ai-image', label: 'AI Image', icon: BrainCircuit, href: '/ai-image' },
+    { id: 'add-dicom', label: 'Import DICOM', icon: Database, href: '/add-dicom' },
     { id: 'viewer', label: 'Viewer', icon: Eye, href: '/viewer' },
     { id: 'dicom', label: 'History', icon: FileText, href: '/dicom' },
     { id: 'reports', label: 'Reports', icon: ClipboardList, href: '/reports' },
@@ -35,8 +35,8 @@ export function Sidebar() {
                   key={module.id}
                   href={module.href}
                   className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${isActive
-                      ? 'bg-[#00A9E0] text-white'
-                      : 'text-white/90 hover:bg-[#3E3E42]'
+                    ? 'bg-[#00A9E0] text-white'
+                    : 'text-white/90 hover:bg-[#3E3E42]'
                     }`}
                 >
                   <Icon className="h-4 w-4" />

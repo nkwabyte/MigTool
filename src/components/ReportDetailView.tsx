@@ -2,7 +2,10 @@ import { ArrowLeft, Download, Printer, MessageSquare, X, Send } from 'lucide-rea
 import { Button } from './ui/button';
 import { Report } from '../store/slices/reportsSlice';
 import jsPDF from 'jspdf';
-import { useState } from 'react';
+import { useState, useEffect, useTransition } from 'react';
+import { sendChatMessage } from '@/src/actions/image-chat';
+import { getChatHistory } from '@/src/actions/get-chat-history';
+import { toast } from 'sonner';
 
 interface ReportDetailViewProps {
   report: Report;
@@ -18,65 +21,70 @@ interface ChatMessage {
 
 export function ReportDetailView({ report, onBack }: ReportDetailViewProps) {
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: 'Hello! I\'m your AI radiology assistant. I can help you understand this report, answer questions about the findings, or provide additional context. How can I help you today?',
-      timestamp: new Date()
-    }
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
+  const [isPending, startTransition] = useTransition();
+
+  // Load chat history
+  useEffect(() => {
+    if (isChatOpen) {
+      const loadHistory = async () => {
+        const result = await getChatHistory(report.id, 'report');
+        if (result.success && result.messages) {
+          const formattedMessages: ChatMessage[] = result.messages.map(msg => ({
+            id: msg.id,
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content,
+            timestamp: new Date(msg.createdAt!)
+          }));
+          setMessages(formattedMessages);
+        } else if (result.messages && result.messages.length === 0) {
+          // Default greeting if no history
+          setMessages([{
+            id: 'default-greeting',
+            role: 'assistant',
+            content: 'Hello! I\'m your AI radiology assistant. I can help you understand this report, answer questions about the findings, or provide additional context. How can I help you today?',
+            timestamp: new Date()
+          }]);
+        }
+      };
+      loadHistory();
+    }
+  }, [isChatOpen, report.id]);
+
 
   const handleSendMessage = () => {
     if (!inputMessage.trim()) return;
 
-    const userMessage: ChatMessage = {
+    const userMsgText = inputMessage;
+    const optimisticMsg: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: inputMessage,
+      content: userMsgText,
       timestamp: new Date()
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages(prev => [...prev, optimisticMsg]);
     setInputMessage('');
 
-    setTimeout(() => {
-      const aiResponse: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: generateAIResponse(inputMessage, report),
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, aiResponse]);
-    }, 1000);
+    startTransition(async () => {
+      const result = await sendChatMessage(report.id, userMsgText, 'report');
+      if (result.success && result.message) {
+        const aiMsg: ChatMessage = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: result.message,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, aiMsg]);
+      } else {
+        toast.error("Failed to send message: " + result.error);
+      }
+    });
   };
 
-  const generateAIResponse = (question: string, report: Report): string => {
-    const lowerQuestion = question.toLowerCase();
-    
-    if (lowerQuestion.includes('stroke') || lowerQuestion.includes('ischemic')) {
-      return 'Based on the report, the patient has suffered an acute ischemic stroke in the left middle cerebral artery (MCA) territory. This type of stroke occurs when blood flow to a part of the brain is blocked, causing tissue damage. The CT and MRI images confirm restricted diffusion in the affected areas, which is characteristic of acute ischemia. The report indicates approximately 4mm of midline shift, which suggests some swelling and mass effect.';
-    }
-    
-    if (lowerQuestion.includes('treatment') || lowerQuestion.includes('intervention')) {
-      return 'The report recommends immediate intervention within the therapeutic window. For acute ischemic stroke, this typically involves endovascular thrombectomy (mechanical removal of the clot) if the patient is within 6-24 hours of symptom onset, and/or thrombolytic therapy (clot-busting medication) if within 4.5 hours. The presence of mass effect and midline shift requires close monitoring for potential complications.';
-    }
-    
-    if (lowerQuestion.includes('prognosis') || lowerQuestion.includes('outcome')) {
-      return 'The prognosis depends on several factors including the size of the infarct, speed of intervention, and the patient\'s overall health. The report shows a significant area of involvement (3.5 x 2.8 cm) with mass effect, which indicates a moderate to large stroke. Early intervention can significantly improve outcomes. Follow-up imaging is recommended to monitor for hemorrhagic transformation and progression.';
-    }
-    
-    if (lowerQuestion.includes('finding') || lowerQuestion.includes('what does')) {
-      return 'The key finding is multiple hypodense (darker) areas in the left brain hemisphere on CT, with corresponding restricted diffusion on MRI. This confirms acute ischemic stroke. The "mass effect with 4mm rightward midline shift" means the affected brain tissue is swelling and pushing structures to the right side. No hemorrhage (bleeding) was detected, which is important for treatment decisions.';
-    }
+  // Removed generateAIResponse mock function
 
-    if (lowerQuestion.includes('mri') || lowerQuestion.includes('ct')) {
-      return 'The CT scan shows hypodense (darker) regions indicating reduced blood flow and tissue damage. The MRI with DWI (diffusion-weighted imaging) is more sensitive and confirms acute ischemia by showing restricted diffusion. Together, these imaging modalities provide complementary information - CT is faster and rules out hemorrhage, while MRI is more sensitive for detecting early ischemic changes.';
-    }
-    
-    return 'I can help explain specific findings in the report, discuss treatment options, clarify medical terminology, or answer questions about the prognosis. Could you please be more specific about what aspect of the report you\'d like me to explain?';
-  };
 
   const handleDownloadPDF = async () => {
     const pdf = new jsPDF('p', 'mm', 'a4');
@@ -89,7 +97,7 @@ export function ReportDetailView({ report, onBack }: ReportDetailViewProps) {
     const addText = (text: string, fontSize: number, isBold = false) => {
       pdf.setFontSize(fontSize);
       pdf.setFont('helvetica', isBold ? 'bold' : 'normal');
-      
+
       const lines = pdf.splitTextToSize(text, contentWidth);
       lines.forEach((line: string) => {
         if (yPosition > pageHeight - margin) {
@@ -108,7 +116,7 @@ export function ReportDetailView({ report, onBack }: ReportDetailViewProps) {
     pdf.setFontSize(18);
     pdf.setFont('helvetica', 'bold');
     pdf.text('RADIOLOGY REPORT', margin, 15);
-    
+
     yPosition = 35;
     pdf.setTextColor(0, 0, 0);
 
@@ -162,7 +170,7 @@ export function ReportDetailView({ report, onBack }: ReportDetailViewProps) {
   return (
     <div className="flex-1 flex overflow-hidden bg-[#1E1E1E]">
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <div className="border-b border-[#3E3E42] p-4 flex-shrink-0">
+        <div className="border-b border-[#3E3E42] p-4 shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button onClick={onBack} size="sm" variant="ghost" className="text-white/80 hover:text-white hover:bg-[#3E3E42]">
@@ -243,7 +251,7 @@ export function ReportDetailView({ report, onBack }: ReportDetailViewProps) {
 
       {isChatOpen && (
         <div className="w-96 border-l border-[#3E3E42] flex flex-col bg-[#1E1E1E] h-full">
-          <div className="p-4 border-b border-[#3E3E42] flex items-center justify-between flex-shrink-0">
+          <div className="p-4 border-b border-[#3E3E42] flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2"><MessageSquare className="h-5 w-5 text-[#00A9E0]" /><h3 className="text-white/90">AI Assistant</h3></div>
             <Button onClick={() => setIsChatOpen(false)} size="sm" variant="ghost" className="text-white/60 hover:text-white hover:bg-[#3E3E42] h-8 w-8 p-0"><X className="h-4 w-4" /></Button>
           </div>
@@ -261,7 +269,7 @@ export function ReportDetailView({ report, onBack }: ReportDetailViewProps) {
             </div>
           </div>
 
-          <div className="p-4 border-t border-[#3E3E42] flex-shrink-0">
+          <div className="p-4 border-t border-[#3E3E42] shrink-0">
             <div className="flex gap-2">
               <input type="text" value={inputMessage} onChange={(e) => setInputMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()} placeholder="Ask about the report..." className="flex-1 bg-[#2B2B2B] border border-[#3E3E42] rounded px-3 py-2 text-sm text-white/90 placeholder:text-white/40 focus:outline-none focus:border-[#00A9E0]" />
               <Button onClick={handleSendMessage} size="sm" className="bg-[#00A9E0] hover:bg-[#0090c0] text-white" disabled={!inputMessage.trim()}>

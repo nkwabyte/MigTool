@@ -15,6 +15,13 @@
       "when": 1769700490402,
       "tag": "0001_cool_lilandra",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1770120208949,
+      "tag": "0002_rare_virginia_dare",
+      "breakpoints": true
     }
   ]
 }

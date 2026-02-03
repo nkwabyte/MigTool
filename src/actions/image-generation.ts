@@ -93,15 +93,29 @@ export async function generateImageFromImage(
       direction: direction,
     });
 
-    console.log('Gradio API result:', result);
+    // console.log('Gradio API result:', result);
 
-    // The result.data should contain the generated image
-    if (result && result.data) {
-      // The API returns the image URL or path
-      const imageData = result.data;
+    // The result.data is an array containing the generated image
+    if (result && result.data && Array.isArray(result.data) && result.data.length > 0) {
+      const imageData = result.data[0];
 
-      // If it's a URL, fetch it and convert to base64
-      if (typeof imageData === 'string' && imageData.startsWith('http')) {
+      // Check if imageData has a url property
+      if (imageData && typeof imageData === 'object' && 'url' in imageData && imageData.url) {
+        const imageUrl = imageData.url as string;
+        // console.log('Fetching image from URL:', imageUrl);
+
+        const imageResponse = await fetch(imageUrl);
+        const imageBlob = await imageResponse.blob();
+        const arrayBuffer = await imageBlob.arrayBuffer();
+        const base64Image = Buffer.from(arrayBuffer).toString('base64');
+
+        return {
+          success: true,
+          message: `Image translated successfully using ${model}`,
+          image: base64Image
+        };
+      } else if (typeof imageData === 'string' && imageData.startsWith('http')) {
+        // Fallback: if it's a direct URL string
         const imageResponse = await fetch(imageData);
         const imageBlob = await imageResponse.blob();
         const arrayBuffer = await imageBlob.arrayBuffer();
@@ -112,33 +126,17 @@ export async function generateImageFromImage(
           message: `Image translated successfully using ${model}`,
           image: base64Image
         };
-      } else if (typeof imageData === 'object' && imageData !== null && (imageData as { url?: string }).url) {
-        // Handle object response with url property
-        const imageResponse = await fetch((imageData as { url: string }).url);
-        const imageBlob = await imageResponse.blob();
-        const arrayBuffer = await imageBlob.arrayBuffer();
-        const base64Image = Buffer.from(arrayBuffer).toString('base64');
-
-        return {
-          success: true,
-          message: `Image translated successfully using ${model}`,
-          image: base64Image
-        };
       } else {
-        // If it's already base64 or another format
-        return {
-          success: true,
-          message: `Image translated successfully using ${model}`,
-          image: imageData
-        };
+        // console.error('Unexpected image data format:', imageData);
+        return { success: false, error: 'Unexpected response format from Gradio API' };
       }
     } else {
-      console.error('No image data in Gradio response:', result);
+      // console.error('No image data in Gradio response:', result);
       return { success: false, error: 'Failed to generate image from Gradio API' };
     }
 
   } catch (error) {
-    console.error(`Error generating image with ${model}:`, error);
+    // console.error(`Error generating image with ${model}:`, error);
 
     // Check if the error is due to missing package
     if (error instanceof Error && error.message.includes('Cannot find module')) {
@@ -156,7 +154,7 @@ export async function generateImageFromImage(
 }
 
 export async function generateReport(imageBase64: string) {
-  console.log(`Generating report for image...`);
+  // console.log(`Generating report for image...`);
 
   const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
   if (!apiKey) {
