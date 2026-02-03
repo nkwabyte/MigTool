@@ -5,6 +5,7 @@ import React, { useState, useTransition } from 'react';
 import { toast } from "sonner";
 import { generateImage, generateReport, generateImageFromImage } from '../../actions/image-generation';
 import { saveGeneratedImage } from '../../actions/save-image';
+import { saveReport } from '../../actions/reports';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -154,6 +155,8 @@ export function AIImageModule() {
         setIsChatOpen(false); // Close chat
     };
 
+    // ... existing imports
+
     const handleGenerateReport = () => {
         if (!uploadedImage) {
             toast.error("Please upload an image first");
@@ -167,7 +170,33 @@ export function AIImageModule() {
                 const result = await generateReport(uploadedImage);
                 if (result.success && result.report) {
                     setReport(result.report);
-                    toast.success("Report generated successfully");
+                    // Extract basic info from the report for metadata if possible, or use defaults
+                    // Simple heuristic to find Patient Name if generated
+                    const patientNameMatch = result.report.match(/Patient Name:?\s*(.*?)(\n|$)/i);
+                    const patientName = patientNameMatch ? patientNameMatch[1].trim() : "Unknown Patient";
+
+                    const modalityMatch = result.report.match(/Modality:?\s*(.*?)(\n|$)/i);
+                    const modality = modalityMatch ? modalityMatch[1].trim() : "Unknown Modality";
+
+                    const bodyPartMatch = result.report.match(/Body Part:?\s*(.*?)(\n|$)/i);
+                    const bodyPart = bodyPartMatch ? bodyPartMatch[1].trim() : "Unknown Body Part";
+
+                    // Save report to database
+                    const saveResult = await saveReport({
+                        imageUrl: uploadedImage, // This might be a data URL, good for now.
+                        reportContent: result.report,
+                        patientName,
+                        modality,
+                        bodyPart,
+                        studyDate: new Date().toLocaleDateString(),
+                        status: 'Finalized', // Auto-finalize for now
+                    });
+
+                    if (saveResult.success) {
+                        toast.success("Report generated and saved");
+                    } else {
+                        toast.warning("Report generated but failed to save to history");
+                    }
                 } else {
                     toast.error(result.error || "Failed to generate report");
                 }
