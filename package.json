@@ -1,14 +1,17 @@
 {
-  "name": "MiGTool",
+  "name": "migtool",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
+    "@cornerstonejs/core": "^4.15.28",
+    "@cornerstonejs/dicom-image-loader": "^4.15.28",
+    "@cornerstonejs/tools": "^4.15.28",
     "@google/genai": "^1.38.0",
     "@gradio/client": "^2.0.4",
     "@libsql/client": "^0.17.0",
@@ -45,10 +48,13 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "dcmjs": "^0.49.1",
+    "dicom-parser": "^1.8.21",
     "drizzle-orm": "^0.45.1",
     "dwv": "^0.35.1",
     "dwv-react": "^1.0.9",
     "embla-carousel-react": "^8.6.0",
+    "html-to-image": "^1.11.13",
     "input-otp": "^1.4.2",
     "jose": "^6.1.3",
     "jspdf": "^4.0.0",
@@ -70,9 +76,9 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
-    "@types/adm-zip": "^0.5.7",
+    "@types/adm-zip": "latest",
     "@types/node": "^25.0.8",
-    "@types/react": "^19.2.8",
+    "@types/react": "^19.2.11",
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.23",
     "dotenv": "^17.2.3",

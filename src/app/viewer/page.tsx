@@ -7,10 +7,9 @@ import { ViewerModule } from '@/src/components/modules/ViewerModule';
 import { ViewerSidebar } from '@/src/components/viewer/ViewerSidebar';
 import { generateDicomReport } from '@/src/actions/dicom-report';
 import { toast } from 'sonner';
-import html2canvas from 'html2canvas';
+
 
 import { useAppDispatch, useAppSelector } from '@/src/store/hooks';
-import { addReport, Report } from '@/src/store/slices/reportsSlice';
 
 export default function ViewerPage() {
     const router = useRouter();
@@ -37,19 +36,18 @@ export default function ViewerPage() {
                 throw new Error('Viewer element not found');
             }
 
+            const { toPng } = await import('html-to-image');
+
             // Small delay to ensure rendering is complete if needed
             await new Promise(r => setTimeout(r, 100));
 
-            const canvas = await html2canvas(viewerElement, {
-                useCORS: true,
-                logging: false,
-                ignoreElements: (element) => {
-                    // Ignore UI overlay elements if they have specific classes like 'toolbar' or 'sidebar'
-                    // For now, capturing everything inside viewer-content is fine
-                    return false;
+            const imageData = await toPng(viewerElement, {
+                cacheBust: true,
+                skipAutoScale: true,
+                style: {
+                    background: '#101010' // Force background if transparent
                 }
             });
-            const imageData = canvas.toDataURL('image/png');
 
             // Find metadata (this would ideally come from DicomViewer state lifting or context)
             // For now, we mock or try to extract from UI if possible, or pass basic info

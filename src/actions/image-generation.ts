@@ -1,6 +1,12 @@
 'use server';
 
 import { GoogleGenAI, HarmBlockThreshold, HarmCategory } from "@google/genai";
+import { db } from '../db';
+import { generatedImages } from '../db/schema';
+import { eq } from 'drizzle-orm';
+import { getSession } from '../lib/session';
+import { unlink } from 'fs/promises';
+import { join } from 'path';
 
 export async function generateImage(prompt: string, model: string) {
   console.log(`Generating image with model: ${model} and prompt: ${prompt}`);
@@ -206,5 +212,54 @@ export async function generateReport(imageBase64: string) {
   } catch (error) {
     console.error("Error generating report with Google Gemini:", error);
     return { success: false, error: "Failed to generate report" };
+  }
+}
+
+
+/**
+ * Delete a generated image and its file
+ * Requires user authentication and ownership
+ */
+export async function deleteGeneratedImage(imageId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const session = await getSession();
+
+    if (!session || !session.userId) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    // Verify ownership and get image path
+    const [image] = await db
+      .select()
+      .from(generatedImages)
+      .where(eq(generatedImages.id, imageId));
+
+    if (!image) {
+      return { success: false, error: 'Image not found' };
+    }
+
+    if (image.userId !== session.userId) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    // Delete file from disk
+    // Image path is relative to public, e.g. 'generated/image.png'
+    if (image.imagePath) {
+      try {
+        const absolutePath = join(process.cwd(), 'public', image.imagePath);
+        await unlink(absolutePath);
+      } catch (fsError) {
+        console.error('Error deleting image file from disk:', fsError);
+        // Continue with DB deletion
+      }
+    }
+
+    // Delete from database
+    await db.delete(generatedImages).where(eq(generatedImages.id, imageId));
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting generated image:', error);
+    return { success: false, error: 'Failed to delete image' };
   }
 }

@@ -54,11 +54,11 @@ export function ImageViewport({
   orientation = {}
 }: ImageViewportProps) {
   const colors = colorMap[borderColor];
-  
+
   return (
-    <div className={`relative w-full h-full bg-black border-2 ${colors.border} overflow-hidden flex flex-col`}>
+    <div className={`relative w-full h-full bg-[#101010] border-2 ${colors.border} overflow-hidden flex flex-col`}>
       {/* Colored Top Bar with Controls */}
-      <div className={`${colors.bg} h-6 flex items-center justify-between px-2 flex-shrink-0`}>
+      <div className={`${colors.bg} h-6 flex items-center justify-between px-2 shrink-0`}>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
@@ -94,7 +94,7 @@ export function ImageViewport({
             className="w-full h-full object-cover opacity-80 grayscale"
           />
         )}
-        
+
         {/* Overlay Information - Top Left */}
         <div className="absolute top-2 left-2 text-white/80 space-y-0 pointer-events-none select-none text-xs">
           <div>{patientName}</div>
