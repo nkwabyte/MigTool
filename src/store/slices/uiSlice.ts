@@ -1,13 +1,13 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-export type ViewerLayout = '1x2' | '2x2';
+export type ViewerLayout = '1x1' | '1x2' | '2x2';
 
 interface UIState {
     viewerLayout: ViewerLayout;
 }
 
 const initialState: UIState = {
-    viewerLayout: '1x2',
+    viewerLayout: '1x1',
 };
 
 const uiSlice = createSlice({

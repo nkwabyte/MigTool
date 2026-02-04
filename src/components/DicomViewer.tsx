@@ -67,7 +67,9 @@ export function DicomViewer({ fileUrl, borderColor = 'red' }: DicomViewerProps) 
                 const file = new File([blob], 'dicom.dcm', { type: 'application/dicom' });
 
                 // Load into DWV
+                console.log('Loading DICOM file from URL:', fileUrl);
                 await app.loadFiles([file]);
+                console.log('DWV loadFiles completed');
 
                 // Extract metadata
                 const meta = app.getMetaData('0');
@@ -93,7 +95,11 @@ export function DicomViewer({ fileUrl, borderColor = 'red' }: DicomViewerProps) 
 
         return () => {
             // Cleanup
-            app.reset();
+            if (app) {
+                // DWV cleanup logic if needed, but avoid resetDisplay here to prevent errors 
+                // if unmounting. Usually resetDisplay is for resetting view, not unmounting.
+                // app.reset(); // This might be what you want if you meant to clear data
+            }
         };
     }, [fileUrl]);
 
@@ -113,7 +119,11 @@ export function DicomViewer({ fileUrl, borderColor = 'red' }: DicomViewerProps) 
 
     const handleReset = () => {
         if (dwvApp) {
-            dwvApp.resetDisplay();
+            try {
+                dwvApp.resetDisplay();
+            } catch (error) {
+                console.warn("Reset display failed:", error);
+            }
         }
     };
 

@@ -4,6 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ViewerToolbar } from '@/src/components/ViewerToolbar';
 import { ViewerModule } from '@/src/components/modules/ViewerModule';
+import { ViewerSidebar } from '@/src/components/viewer/ViewerSidebar';
+import { generateDicomReport } from '@/src/actions/dicom-report';
+import { toast } from 'sonner';
+import html2canvas from 'html2canvas';
+
 import { useAppDispatch, useAppSelector } from '@/src/store/hooks';
 import { addReport, Report } from '@/src/store/slices/reportsSlice';
 
@@ -14,68 +19,90 @@ export default function ViewerPage() {
 
     const [heatmapIntensity, setHeatmapIntensity] = useState(0);
     const [reportType, setReportType] = useState('none');
-    const [imageGenType, setImageGenType] = useState('ct-to-mri');
 
-    const generateBriefReport = () => {
-        return `CLINICAL INDICATION:\nAcute onset neurological symptoms.\n\nTECHNIQUE:\nNon-contrast CT and MRI of the brain.\n\nFINDINGS:\nMultiple hypodense areas in left cerebral hemisphere on CT. MRI confirms restricted diffusion consistent with acute ischemic changes. No hemorrhage detected.\n\nIMPRESSION:\nAcute ischemic stroke in left MCA territory. Immediate intervention recommended.`;
-    };
+    const [selectedFileUrl, setSelectedFileUrl] = useState<string | null>(null);
+    const [isGenerating, setIsGenerating] = useState(false);
 
-    const generateDetailedReport = () => {
-        return `CLINICAL INDICATION:\nPatient presents with acute onset left-sided weakness and speech difficulties. Evaluate for acute cerebrovascular accident.\n\nTECHNIQUE:\nNon-contrast CT of the head was performed with 5mm axial slices. Subsequently, multiplanar MRI brain was obtained including DWI, FLAIR, T1, and T2 sequences.\n\nCOMPARISON:\nNo prior imaging available for comparison.\n\nFINDINGS:\n\nBrain Parenchyma:\nMultiple well-defined hypodense regions are identified in the left middle cerebral artery (MCA) territory on CT imaging, measuring approximately 3.5 x 2.8 cm. The MRI demonstrates restricted diffusion in these areas with corresponding high signal on DWI and low signal on ADC maps, confirming acute ischemic stroke.\n\nMass Effect:\nThere is associated mass effect with approximately 4mm rightward midline shift. The left lateral ventricle shows mild compression. No transtentorial or subfalcine herniation at this time.\n\nHemorrhage:\nNo evidence of acute or chronic hemorrhage. No hemorrhagic transformation of the infarct.\n\nVascular Structures:\nThe visualized intracranial vessels demonstrate no gross abnormality on this non-contrast study. Circle of Willis appears intact.\n\nExtra-axial Spaces:\nNo extra-axial fluid collection. Ventricular system is normal in size and configuration aside from the aforementioned left lateral ventricle compression.\n\nOsseous Structures:\nVisualized osseous structures demonstrate no acute fracture or lytic lesion.\n\nIMPRESSION:\n1. Acute ischemic stroke involving the left middle cerebral artery territory with early mass effect and 4mm rightward midline shift.\n2. No hemorrhagic conversion identified at this time.\n3. Recommend immediate clinical correlation and consideration for endovascular intervention within the therapeutic window.\n4. Follow-up imaging recommended to assess for hemorrhagic transformation and progression of ischemic changes.`;
-    };
+    const handleGenerateReport = async () => {
+        if (reportType === 'none' || !selectedFileUrl) {
+            toast.error('Please select a file and report type first');
+            return;
+        }
 
-    const handleGenerateReport = () => {
-        if (reportType === 'none') return;
+        setIsGenerating(true);
+        try {
+            // Capture the viewer content
+            const viewerElement = document.getElementById('viewer-content');
+            if (!viewerElement) {
+                throw new Error('Viewer element not found');
+            }
 
-        // Generate report based on current viewer state
-        const newReport: Report = {
-            id: `report-${Date.now()}`,
-            patientName: 'Smith, John',
-            patientId: 'MRN-123456',
-            studyDate: '2024-11-20',
-            modality: 'CT/MRI',
-            bodyPart: 'Head',
-            description: 'CT and MRI Brain comparison study',
-            status: 'Finalized',
-            radiologist: 'Dr. Sarah Johnson',
-            reportType: reportType as 'brief' | 'detailed',
-            reportText: reportType === 'brief'
-                ? generateBriefReport()
-                : generateDetailedReport(),
-            findings: reportType === 'brief'
-                ? 'Multiple hypodense areas noted in the left cerebral hemisphere consistent with acute ischemic changes. No evidence of hemorrhage. Mass effect present with mild midline shift.'
-                : 'The CT scan demonstrates multiple well-defined hypodense regions in the left middle cerebral artery (MCA) territory, measuring approximately 3.5 x 2.8 cm. The corresponding MRI shows restricted diffusion in these areas, confirming acute ischemic stroke. There is associated mass effect with approximately 4mm rightward midline shift. The ventricular system shows mild compression of the left lateral ventricle. No evidence of hemorrhagic transformation. Gray-white matter differentiation is preserved in the unaffected regions.',
-            impression: reportType === 'brief'
-                ? 'Acute ischemic stroke in left MCA territory. Recommend immediate intervention.'
-                : 'Acute ischemic stroke involving the left middle cerebral artery territory with early mass effect and midline shift. No hemorrhagic conversion identified. Clinical correlation recommended with immediate consideration for endovascular intervention within the therapeutic window. Follow-up imaging recommended to assess for hemorrhagic transformation and progression of ischemic changes.',
-            images: [
-                { url: '/assets/ct_image.png', label: 'CT Brain - Axial View' },
-                { url: '/assets/mri_image.png', label: 'MRI Brain - Axial View' }
-            ],
-            generatedDate: new Date().toISOString()
-        };
+            // Small delay to ensure rendering is complete if needed
+            await new Promise(r => setTimeout(r, 100));
 
-        dispatch(addReport(newReport));
-        // Navigate to reports module
-        router.push('/reports');
+            const canvas = await html2canvas(viewerElement, {
+                useCORS: true,
+                logging: false,
+                ignoreElements: (element) => {
+                    // Ignore UI overlay elements if they have specific classes like 'toolbar' or 'sidebar'
+                    // For now, capturing everything inside viewer-content is fine
+                    return false;
+                }
+            });
+            const imageData = canvas.toDataURL('image/png');
+
+            // Find metadata (this would ideally come from DicomViewer state lifting or context)
+            // For now, we mock or try to extract from UI if possible, or pass basic info
+            // In a real app, ViewerSidebar or a Context would hold the current patient meta
+            const mockMetadata = {
+                patientName: "JOHN DOE", // Ideally extracted
+                modality: "CR",
+                bodyPart: "CHEST",
+                studyDate: new Date().toISOString().split('T')[0]
+            };
+
+            const result = await generateDicomReport({
+                imageData,
+                reportType: reportType as 'brief' | 'detailed',
+                metadata: mockMetadata
+            });
+
+            if (result.success) {
+                toast.success('Report generated successfully');
+                router.push('/reports');
+            } else {
+                toast.error('Failed to generate report: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Report generation error:', error);
+            toast.error('An unexpected error occurred');
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     return (
-        <div className="flex-1 flex flex-col overflow-hidden">
-            <ViewerToolbar
-                heatmapIntensity={heatmapIntensity}
-                onHeatmapChange={(value) => setHeatmapIntensity(value[0])}
-                onGenerateReport={handleGenerateReport}
-                reportType={reportType}
-                onReportTypeChange={setReportType}
-                imageGenType={imageGenType}
-                onImageGenTypeChange={setImageGenType}
+        <div className="flex-1 flex overflow-hidden">
+            <ViewerSidebar
+                onFileSelect={setSelectedFileUrl}
+                selectedFileUrl={selectedFileUrl}
             />
-            <ViewerModule
-                layout={viewerLayout}
-                heatmapIntensity={heatmapIntensity}
-                imageGenType={imageGenType}
-            />
+            <div className="flex-1 flex flex-col overflow-hidden" id="viewer-content">
+                <ViewerToolbar
+                    heatmapIntensity={heatmapIntensity}
+                    onHeatmapChange={(value) => setHeatmapIntensity(value[0])}
+                    onGenerateReport={handleGenerateReport}
+                    reportType={reportType}
+                    onReportTypeChange={setReportType}
+                    isGenerating={isGenerating}
+                />
+                <ViewerModule
+                    layout={viewerLayout}
+                    heatmapIntensity={heatmapIntensity}
+                    imageGenType={'none'} // Simplified as requested
+                    selectedFileUrl={selectedFileUrl}
+                />
+            </div>
         </div>
     );
 }

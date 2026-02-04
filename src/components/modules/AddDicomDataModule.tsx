@@ -223,11 +223,17 @@ export function AddDicomDataModule() {
       toast.dismiss(toastId);
       toast.success(`Successfully imported ${uploadedFiles.length} file(s)!`, {
         duration: 3000,
-        action: {
-          label: 'View History',
-          onClick: () => router.push('/dicom')
-        }
       });
+
+      // Redirect to viewer with the first imported file
+      if (filesMetadata.length > 0) {
+        const firstFile = filesMetadata[0];
+        const encodedPath = encodeURIComponent(firstFile.path);
+        router.push(`/viewer?file=${encodedPath}`);
+      } else {
+        // Fallback if no files somehow
+        router.push('/dicom');
+      }
 
       // Clear uploaded files
       setUploadedFiles([]);
