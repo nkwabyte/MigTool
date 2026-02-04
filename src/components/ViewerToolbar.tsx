@@ -17,41 +17,22 @@ interface ViewerToolbarProps {
   onGenerateReport: () => void;
   reportType: string;
   onReportTypeChange: (value: string) => void;
-  imageGenType: string;
-  onImageGenTypeChange: (value: string) => void;
+  isGenerating?: boolean;
 }
 
-export function ViewerToolbar({ 
-  heatmapIntensity, 
-  onHeatmapChange, 
+export function ViewerToolbar({
+  heatmapIntensity,
+  onHeatmapChange,
   onGenerateReport,
   reportType,
   onReportTypeChange,
-  imageGenType,
-  onImageGenTypeChange
+  isGenerating
 }: ViewerToolbarProps) {
   return (
     <div className="h-12 bg-[#2B2B2B] border-b border-[#3E3E42] flex items-center justify-between px-4 gap-4">
       {/* Left Side - Image Generation and Report Controls */}
       <div className="flex items-center gap-2">
-        {/* Image Generation Dropdown - First */}
-        <Select value={imageGenType} onValueChange={onImageGenTypeChange}>
-          <SelectTrigger className="w-[180px] bg-[#1E1E1E] border-[#3E3E42] text-white/90">
-            <ArrowLeftRight className="h-4 w-4 mr-2" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="bg-[#2B2B2B] border-[#3E3E42]">
-            <SelectItem value="none" className="text-white/90 hover:bg-[#3E3E42]">
-              None
-            </SelectItem>
-            <SelectItem value="ct-to-mri" className="text-white/90 hover:bg-[#3E3E42]">
-              CT to MRI
-            </SelectItem>
-            <SelectItem value="mri-to-ct" className="text-white/90 hover:bg-[#3E3E42]">
-              MRI to CT
-            </SelectItem>
-          </SelectContent>
-        </Select>
+
 
         {/* Report Type Dropdown */}
         <Select value={reportType} onValueChange={onReportTypeChange}>
@@ -74,11 +55,11 @@ export function ViewerToolbar({
         {/* Generate Report Button */}
         <Button
           onClick={onGenerateReport}
-          disabled={reportType === 'none'}
-          className="bg-[#00A9E0] hover:bg-[#0090c0] text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={reportType === 'none' || isGenerating}
+          className="bg-[#00A9E0] hover:bg-[#0090c0] text-white disabled:opacity-50 disabled:cursor-not-allowed min-w-[140px]"
         >
           <FileText className="h-4 w-4 mr-2" />
-          Generate Report
+          {isGenerating ? 'Generating...' : 'Generate Report'}
         </Button>
       </div>
 

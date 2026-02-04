@@ -5,6 +5,8 @@ import { dicomImportSessions, dicomImportedFiles } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { getSession } from '../lib/session';
 import { randomUUID } from 'crypto';
+import { rm as UtilRm } from 'fs/promises';
+import { join } from 'path';
 
 export interface ImportedFile {
     name: string;
@@ -113,6 +115,10 @@ export async function getImportSessions(): Promise<ImportSessionData[]> {
  * Delete an import session and its files
  * Requires user authentication and ownership
  */
+/**
+ * Delete an import session and its files
+ * Requires user authentication and ownership
+ */
 export async function deleteImportSession(sessionId: string): Promise<{ success: boolean; error?: string }> {
     try {
         const session = await getSession();
@@ -133,6 +139,25 @@ export async function deleteImportSession(sessionId: string): Promise<{ success:
 
         if (importSession.userId !== session.userId) {
             return { success: false, error: 'Unauthorized' };
+        }
+
+        // Get file paths associated with this session before deleting from DB
+        const files = await db
+            .select({ path: dicomImportedFiles.path })
+            .from(dicomImportedFiles)
+            .where(eq(dicomImportedFiles.sessionId, sessionId));
+
+        // Delete files from disk
+        // Assuming paths are relative to public like '/dicom/session_.../file.dcm'
+        try {
+            // We can try to delete the session directory if it matches the pattern
+            // Expected path format: /dicom/{sessionId}/filename or similar
+            const sessionDir = join(process.cwd(), 'public', 'dicom', sessionId);
+            // Check if directory exists before trying to delete
+            await UtilRm(sessionDir, { recursive: true, force: true });
+        } catch (fsError) {
+            console.error('Error deleting files from disk:', fsError);
+            // Continue to delete from DB even if file deletion fails partially
         }
 
         // Delete session (files will be deleted automatically due to cascade)

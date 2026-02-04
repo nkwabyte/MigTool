@@ -8,6 +8,7 @@ import {
   BrainCircuit
 } from 'lucide-react';
 import { ScrollArea } from "./ui/scroll-area";
+import { UserTile } from "./UserTile";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -47,6 +48,7 @@ export function Sidebar() {
           </div>
         </div>
       </ScrollArea>
+      <UserTile />
     </div>
   );
 }

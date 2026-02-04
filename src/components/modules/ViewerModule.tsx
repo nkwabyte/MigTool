@@ -2,16 +2,20 @@
 
 import { ViewerLayout } from '../../store/slices/uiSlice';
 import { ImageViewport } from '../ImageViewport';
-import ctImage from '@/src/assets/ct_image.png';
-import mriImage from '@/src/assets/mri_image.png';
+import dynamic from 'next/dynamic';
+
+const DicomViewer = dynamic(() => import('../DicomViewer').then(mod => mod.DicomViewer), {
+  ssr: false,
+});
 
 interface ViewerModuleProps {
   layout: ViewerLayout;
   heatmapIntensity: number;
-  imageGenType: string;
+  imageGenType?: string; // Kept optional for backward compat but unused
+  selectedFileUrl?: string | null;
 }
 
-export function ViewerModule({ layout, heatmapIntensity, imageGenType }: ViewerModuleProps) {
+export function ViewerModule({ layout, heatmapIntensity, imageGenType, selectedFileUrl }: ViewerModuleProps) {
   // Heatmap overlay component
   const getHeatmapOverlay = () => (
     <div
@@ -44,48 +48,50 @@ export function ViewerModule({ layout, heatmapIntensity, imageGenType }: ViewerM
     />
   );
 
+  /* Dicom Viewer Wrapper */
+  const getDicomViewport = (borderColor: 'red' | 'yellow') => (
+    <div className="relative h-full w-full">
+      {selectedFileUrl ? (
+        <DicomViewer fileUrl={selectedFileUrl} borderColor={borderColor} />
+      ) : (
+        getEmptyViewport(borderColor)
+      )}
+    </div>
+  );
+
   // Determine which image goes where based on imageGenType
   const getCTViewport = (borderColor: 'red' | 'yellow', withHeatmap: boolean = false) => (
-    <div className="relative">
+    <div className="relative h-full w-full">
       <ImageViewport
-        imageUrl={ctImage.src}
-        patientName="Smith, John"
-        modality="CT"
-        series="Axial Brain"
-        imageNumber="1/1"
-        window="1500"
-        level="500"
+        imageUrl={""} // Empty default
+        patientName=""
+        modality=""
+        series=""
+        imageNumber=""
+        window=""
+        level=""
         borderColor={borderColor}
-        orientation={{
-          top: 'S',
-          bottom: 'I',
-          left: 'A',
-          right: 'P'
-        }}
+        orientation={{}}
       />
-      {withHeatmap && getHeatmapOverlay()}
     </div>
   );
 
   const getMRIViewport = (borderColor: 'red' | 'yellow', withHeatmap: boolean = false) => (
-    <div className="relative">
+    <div className="relative h-full w-full">
+      {/* Placeholder or actual result if available. For now, empty if no result. */}
+      {/* Ideally we would have a result image URL to display here if generation happened */}
       <ImageViewport
-        imageUrl={mriImage.src}
-        patientName="Smith, John"
-        modality="MRI"
-        series="Axial T2"
-        imageNumber="45/120"
-        window="400"
-        level="40"
+        imageUrl={""} // Empty until we have logic for generated image result
+        patientName=""
+        modality=""
+        series=""
+        imageNumber=""
+        window=""
+        level=""
         borderColor={borderColor}
-        orientation={{
-          top: 'S',
-          bottom: 'I',
-          left: 'R',
-          right: 'L'
-        }}
+        orientation={{}}
       />
-      {withHeatmap && getHeatmapOverlay()}
+      {/* Viewport for potential result image - removing static placeholder */}
     </div>
   );
 
@@ -103,13 +109,25 @@ export function ViewerModule({ layout, heatmapIntensity, imageGenType }: ViewerM
     />
   );
 
+  if (layout === '1x1') {
+    return (
+      <div className="flex-1 w-full h-full">
+        {selectedFileUrl ? getDicomViewport('red') : getEmptyViewport('red')}
+      </div>
+    );
+  }
+
   if (layout === '1x2') {
     return (
       <div className="flex-1 grid grid-cols-2 grid-rows-1 gap-0">
         {/* Left Viewport - Red Border - Input Image */}
-        {imageGenType === 'ct-to-mri' && getCTViewport('red', false)}
-        {imageGenType === 'mri-to-ct' && getMRIViewport('red', false)}
-        {imageGenType === 'none' && getEmptyViewport('red')}
+        {selectedFileUrl ? getDicomViewport('red') : (
+          <>
+            {imageGenType === 'ct-to-mri' && getCTViewport('red', false)}
+            {imageGenType === 'mri-to-ct' && getMRIViewport('red', false)}
+            {imageGenType === 'none' && getEmptyViewport('red')}
+          </>
+        )}
 
         {/* Right Viewport - Yellow Border - Output Image with Heatmap */}
         {imageGenType === 'ct-to-mri' && getMRIViewport('yellow', true)}
@@ -123,9 +141,13 @@ export function ViewerModule({ layout, heatmapIntensity, imageGenType }: ViewerM
   return (
     <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-0 min-h-0">
       {/* Top-Left Viewport - Red Border - Input Image */}
-      {imageGenType === 'ct-to-mri' && getCTViewport('red', false)}
-      {imageGenType === 'mri-to-ct' && getMRIViewport('red', false)}
-      {imageGenType === 'none' && getEmptyViewport('red')}
+      {selectedFileUrl ? getDicomViewport('red') : (
+        <>
+          {imageGenType === 'ct-to-mri' && getCTViewport('red', false)}
+          {imageGenType === 'mri-to-ct' && getMRIViewport('red', false)}
+          {imageGenType === 'none' && getEmptyViewport('red')}
+        </>
+      )}
 
       {/* Top-Right Viewport - Yellow Border - Output Image with Heatmap */}
       {imageGenType === 'ct-to-mri' && getMRIViewport('yellow', true)}

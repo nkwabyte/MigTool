@@ -27,13 +27,17 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Button } from "./ui/button";
+import { useUser } from './UserProvider';
+import { logout } from '../actions/auth';
+import Link from 'next/link';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setViewerLayout } from '../store/slices/uiSlice';
 
 export function TopMenuBar() {
+  const { user } = useUser();
   const currentLayout = useAppSelector((state) => state.ui.viewerLayout);
   const dispatch = useAppDispatch();
-  const onLayoutChange = (layout: '1x2' | '2x2') => dispatch(setViewerLayout(layout));
+  const onLayoutChange = (layout: '1x1' | '1x2' | '2x2') => dispatch(setViewerLayout(layout));
   return (
     <div className="h-10 bg-[#2B2B2B] border-b border-[#3E3E42] flex items-center justify-between px-3">
       {/* Left Side - Text Menus */}
@@ -129,6 +133,12 @@ export function TopMenuBar() {
           </MenubarTrigger>
           <MenubarContent className="bg-[#2B2B2B] border-[#3E3E42]">
             <MenubarItem
+              className={`text-white/90 hover:bg-[#3E3E42] cursor-pointer ${currentLayout === '1x1' ? 'bg-[#00A9E0]/20 text-[#00A9E0]' : ''}`}
+              onClick={() => onLayoutChange('1x1')}
+            >
+              1x1 Layout
+            </MenubarItem>
+            <MenubarItem
               className={`text-white/90 hover:bg-[#3E3E42] cursor-pointer ${currentLayout === '1x2' ? 'bg-[#00A9E0]/20 text-[#00A9E0]' : ''}`}
               onClick={() => onLayoutChange('1x2')}
             >
@@ -222,27 +232,33 @@ export function TopMenuBar() {
           >
             <DropdownMenuLabel className="text-white/90">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm">Dr. Prince Ebenezer Adjei</p>
-                <p className="text-xs text-white/60 flex items-center gap-1">
+                <p className="text-sm truncate">{user?.name || 'Guest'}</p>
+                <p className="text-xs text-white/60 flex items-center gap-1 truncate">
                   <Mail className="h-3 w-3" />
-                  p.adjei@hospital.com
+                  {user?.email || 'Not logged in'}
                 </p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-[#3E3E42]" />
-            <DropdownMenuItem className="text-white/90 hover:bg-[#3E3E42] cursor-pointer">
-              <User className="h-4 w-4 mr-2" />
-              Profile
-            </DropdownMenuItem>
+            <Link href="/profile">
+              <DropdownMenuItem className="text-white/90 hover:bg-[#3E3E42] cursor-pointer">
+                <User className="h-4 w-4 mr-2" />
+                Profile
+              </DropdownMenuItem>
+            </Link>
             <DropdownMenuItem className="text-white/90 hover:bg-[#3E3E42] cursor-pointer">
               <Settings className="h-4 w-4 mr-2" />
               Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-[#3E3E42]" />
-            <DropdownMenuItem className="text-red-400 hover:bg-[#3E3E42] cursor-pointer">
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </DropdownMenuItem>
+            <form action={logout}>
+              <button type="submit" className="w-full">
+                <DropdownMenuItem className="text-red-400 hover:bg-[#3E3E42] cursor-pointer w-full">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </DropdownMenuItem>
+              </button>
+            </form>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

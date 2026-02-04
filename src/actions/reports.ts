@@ -5,6 +5,8 @@ import { generatedReports } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { getSession } from '../lib/session';
+import { unlink } from 'fs/promises';
+import { join } from 'path';
 
 export interface ReportData {
     imageId?: string;

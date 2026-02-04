@@ -3,22 +3,56 @@
 import { FileText, Calendar, User, Download, Printer, Search } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
-import { useAppSelector } from '../../store/hooks';
-import { Report } from '../../store/slices/reportsSlice';
-import { useState } from 'react';
+import { getReports } from '@/src/actions/reports';
+import { GeneratedReport } from '@/src/db/schema';
+import { useEffect, useState } from 'react';
 import { ReportDetailView } from '../ReportDetailView';
 
+// Extended interface to match UI expectations (mapping DB fields to UI prop names if needed)
+interface UIReport extends GeneratedReport {
+  reportText: string;
+  description: string;
+  patientId: string;
+  generatedDate: string;
+  images: { url: string; label: string }[];
+}
 
 export function ReportsModule() {
-  const reports = useAppSelector((state) => state.reports.reports);
-  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [reports, setReports] = useState<UIReport[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedReport, setSelectedReport] = useState<UIReport | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    async function fetchReports() {
+      try {
+        const result = await getReports();
+        if (result.success && result.reports) {
+          // Map DB report to UI report format
+          const mappedReports: UIReport[] = result.reports.map(r => ({
+            ...r,
+            reportText: r.reportContent, // Map content to text
+            description: r.reportType === 'brief' ? 'Brief Radiology Report' : 'Detailed Radiology Report',
+            patientId: 'MRN-UNKNOWN', // Schema doesn't have MRN yet, using placeholder or could add to schema
+            generatedDate: r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString(),
+            images: r.imageUrl ? [{ url: r.imageUrl, label: 'Source Image' }] : []
+          })) as UIReport[];
+          setReports(mappedReports);
+        }
+      } catch (err) {
+        console.error("Failed to load reports", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchReports();
+  }, []);
 
   // If a report is selected, show the detail view
   if (selectedReport) {
     return (
       <ReportDetailView
-        report={selectedReport}
+        report={selectedReport as any} // Cast to satisfy legacy Redux type for now, UIReport matches shape mostly
         onBack={() => setSelectedReport(null)}
       />
     );
