@@ -65,8 +65,8 @@ export const generatedReports = sqliteTable('generated_reports', {
 
 export const chatMessages = sqliteTable('chat_messages', {
     id: text('id').primaryKey(),
-    imageId: text('image_id').references(() => generatedImages.id, { onDelete: 'cascade' }),
-    reportId: text('report_id').references(() => generatedReports.id, { onDelete: 'cascade' }),
+    imageId: text('image_id').references(() => generatedImages.id, { onDelete: 'cascade' }), // Nullable - chat can be for image OR report
+    reportId: text('report_id').references(() => generatedReports.id, { onDelete: 'cascade' }), // Nullable - chat can be for image OR report
     role: text('role').notNull(), // 'user' or 'assistant'
     content: text('content').notNull(),
     createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),

@@ -7,6 +7,7 @@ import { getReports } from '@/src/actions/reports';
 import { GeneratedReport } from '@/src/db/schema';
 import { useEffect, useState } from 'react';
 import { ReportDetailView } from '../ReportDetailView';
+import { useSearchParams } from 'next/navigation';
 
 // Extended interface to match UI expectations (mapping DB fields to UI prop names if needed)
 interface UIReport extends GeneratedReport {
@@ -22,6 +23,7 @@ export function ReportsModule() {
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<UIReport | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     async function fetchReports() {
@@ -33,11 +35,20 @@ export function ReportsModule() {
             ...r,
             reportText: r.reportContent, // Map content to text
             description: r.reportType === 'brief' ? 'Brief Radiology Report' : 'Detailed Radiology Report',
-            patientId: 'MRN-UNKNOWN', // Schema doesn't have MRN yet, using placeholder or could add to schema
+            patientId: r.patientName.startsWith('PID-') ? r.patientName : 'MRN-UNKNOWN',
             generatedDate: r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString(),
             images: r.imageUrl ? [{ url: r.imageUrl, label: 'Source Image' }] : []
           })) as UIReport[];
           setReports(mappedReports);
+
+          // Check for URL query param to auto-select report
+          const reportIdFromUrl = searchParams.get('id');
+          if (reportIdFromUrl) {
+            const reportToSelect = mappedReports.find(r => r.id === reportIdFromUrl);
+            if (reportToSelect) {
+              setSelectedReport(reportToSelect);
+            }
+          }
         }
       } catch (err) {
         console.error("Failed to load reports", err);
@@ -65,14 +76,18 @@ export function ReportsModule() {
       report.patientName.toLowerCase().includes(query) ||
       report.patientId.toLowerCase().includes(query) ||
       report.description.toLowerCase().includes(query) ||
-      report.bodyPart.toLowerCase().includes(query)
+      report.bodyPart.toLowerCase().includes(query) ||
+      report.modality?.toLowerCase().includes(query) ||
+      report.radiologist?.toLowerCase().includes(query) ||
+      report.status?.toLowerCase().includes(query) ||
+      report.reportText?.toLowerCase().includes(query)
     );
   });
 
   return (
-    <div className="flex-1 flex flex-col bg-[#1E1E1E] overflow-hidden">
+    <div className="flex-1 flex flex-col bg-[#1E1E1E] overflow-hidden h-full">
       {/* Header */}
-      <div className="border-b border-[#3E3E42] p-4">
+      <div className="border-b border-[#3E3E42] p-4 shrink-0">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-xl text-white/90">Radiology Reports</h1>
@@ -116,7 +131,7 @@ export function ReportsModule() {
       </div>
 
       {/* Reports List */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="p-4 space-y-3">
           {filteredReports.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-white/40">
@@ -195,9 +210,9 @@ export function ReportsModule() {
                 <div className="text-sm bg-[#1E1E1E] border border-[#3E3E42] rounded p-3 mb-3">
                   <span className="text-white/60">Impression: </span>
                   <span className="text-white/80">
-                    {report.impression.length > 150
+                    {report.impression && report.impression.length > 150
                       ? `${report.impression.substring(0, 150)}...`
-                      : report.impression}
+                      : report.impression || 'No impression available'}
                   </span>
                 </div>
 

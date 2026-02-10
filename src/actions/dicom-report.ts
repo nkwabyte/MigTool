@@ -5,6 +5,8 @@ import { generatedReports } from '../db/schema';
 import { GoogleGenAI } from "@google/genai";
 import { randomUUID } from 'crypto';
 import { getSession } from '../lib/session';
+import { writeFile, mkdir } from 'fs/promises';
+import { join } from 'path';
 
 interface GenerateReportParams {
     imageData: string;
@@ -35,26 +37,30 @@ export async function generateDicomReport({ imageData, reportType, metadata }: G
         // Construct System Prompt
         const role = "You are an expert Radiologist AI assistant with decades of experience.";
         const context = `You are analyzing a medical image (DICOM screenshot) for a patient named ${metadata.patientName || 'Unknown'}. 
-        The modality is ${metadata.modality || 'Unknown'} and the body part is ${metadata.bodyPart || 'Unknown'}.
         Study Date: ${metadata.studyDate || 'Unknown'}.`;
 
         let instruction = "";
         if (reportType === 'brief') {
-            instruction = `Please provide a **BRIEF**, concise preliminary report. 
-            Focus on the most salient findings and a short impression. 
-            Do NOT use complex headers or long descriptions. Keep it under 200 words.`;
-        } else {
-            instruction = `Please provide a **DETAILED**, professional radiology report.
-            Include the following sections clearly labeled:
-            - **CLINICAL INDICATION**: (Infer from findings if not provided)
-            - **TECHNIQUE**: Describe the likely view/modality seen.
-            - **FINDINGS**: detailed analysis of anatomy, abnormalities, and textures.
-            - **IMPRESSION**: summary of diagnosis and recommendations.
+            instruction = `Please analyze the image and provide a JSON response.
             
-            Use professional medical terminology. Be thorough.`;
+            The JSON object must have the following structure:
+            {
+                "modality": "The imaging modality (e.g., CT, MRI, X-Ray, Ultrasound)",
+                "bodyPart": "The primary body part imaged (e.g., Chest, Brain, Abdomen, Knee)",
+                "reportContent": "A **BRIEF**, concise preliminary report (Markdown formatted). Focus on the most salient findings and a short impression. Keep it under 200 words."
+            }`;
+        } else {
+            instruction = `Please analyze the image and provide a JSON response.
+            
+            The JSON object must have the following structure:
+            {
+                "modality": "The imaging modality (e.g., CT, MRI, X-Ray, Ultrasound)",
+                "bodyPart": "The primary body part imaged (e.g., Chest, Brain, Abdomen, Knee)",
+                "reportContent": "A **DETAILED**, professional radiology report (Markdown formatted). Include sections for CLINICAL INDICATION, TECHNIQUE, FINDINGS, and IMPRESSION. Use professional medical terminology."
+            }`;
         }
 
-        const prompt = `${role}\n${context}\n${instruction}`;
+        const prompt = `${role}\n${context}\n${instruction}\n\nIMPORTANT: Return ONLY valid JSON. Do not include markdown code blocks around the JSON.`;
 
         // Call Gemini
         const ai = new GoogleGenAI({ apiKey });
@@ -76,21 +82,54 @@ export async function generateDicomReport({ imageData, reportType, metadata }: G
             ]
         });
 
-        const reportText = response.text;
+        const responseText = response.text;
+
+        let analysisData;
+        try {
+            // Clean up any potential markdown code blocks if the model ignores the instruction
+            const jsonString = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+            analysisData = JSON.parse(jsonString);
+        } catch (e) {
+            console.error("Failed to parse AI JSON response:", e);
+            // Fallback if JSON parsing fails
+            analysisData = {
+                modality: metadata.modality || "Unknown",
+                bodyPart: metadata.bodyPart || "Unknown",
+                reportContent: responseText
+            };
+        }
+
+        const reportText = analysisData.reportContent;
+        const detectedModality = analysisData.modality;
+        const detectedBodyPart = analysisData.bodyPart;
+
+        // Generate report ID first (needed for filename)
+        const reportId = randomUUID();
+
+        // Save the screenshot to filesystem
+        const uploadsDir = join(process.cwd(), 'public', 'uploads', 'report-images');
+        await mkdir(uploadsDir, { recursive: true });
+
+        const imageFileName = `report-${reportId}.png`;
+        const imagePath = join(uploadsDir, imageFileName);
+        const publicPath = `/uploads/report-images/${imageFileName}`;
+
+        // Convert base64 to buffer and save
+        const imageBuffer = Buffer.from(base64Image, 'base64');
+        await writeFile(imagePath, imageBuffer);
 
         // Save to Database
-        const reportId = randomUUID();
         await db.insert(generatedReports).values({
             id: reportId,
             userId: session.userId as string,
             reportContent: reportText,
             patientName: metadata.patientName || 'Unknown',
-            modality: metadata.modality,
+            modality: detectedModality || metadata.modality || 'Unknown', // Prefer AI detection
             studyDate: metadata.studyDate,
-            bodyPart: metadata.bodyPart,
+            bodyPart: detectedBodyPart || metadata.bodyPart || 'Unknown', // Prefer AI detection
             reportType: reportType,
             status: 'Finalized',
-            imageUrl: null,
+            imageUrl: publicPath,
         });
 
         return { success: true, reportId };

@@ -6,6 +6,7 @@ import { useState, useEffect, useTransition } from 'react';
 import { sendChatMessage } from '@/src/actions/image-chat';
 import { getChatHistory } from '@/src/actions/get-chat-history';
 import { toast } from 'sonner';
+import Markdown from 'react-markdown';
 
 interface ReportDetailViewProps {
   report: Report;
@@ -229,17 +230,22 @@ export function ReportDetailView({ report, onBack }: ReportDetailViewProps) {
 
             <div className="bg-[#2B2B2B] border border-[#3E3E42] rounded-lg p-6">
               <h3 className="text-lg text-white/90 mb-4">Report</h3>
-              <div className="text-white/80 whitespace-pre-wrap font-mono text-sm leading-relaxed">{report.reportText}</div>
-            </div>
-
-            <div className="bg-[#2B2B2B] border border-[#3E3E42] rounded-lg p-6">
-              <h3 className="text-lg text-white/90 mb-4">Key Findings</h3>
-              <p className="text-white/80 leading-relaxed">{report.findings}</p>
-            </div>
-
-            <div className="bg-[#2B2B2B] border border-[#00A9E0] rounded-lg p-6">
-              <h3 className="text-lg text-[#00A9E0] mb-4">Impression</h3>
-              <p className="text-white/90 leading-relaxed">{report.impression}</p>
+              <div className="text-white/80 text-sm leading-relaxed prose prose-invert max-w-none">
+                <Markdown
+                  components={{
+                    h2: ({ node, ...props }) => <h2 className="text-xl font-bold mt-6 mb-3 text-white/90" {...props} />,
+                    h3: ({ node, ...props }) => <h3 className="text-lg font-semibold mt-4 mb-2 text-white/90" {...props} />,
+                    ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-4 space-y-1" {...props} />,
+                    ol: ({ node, ...props }) => <ol className="list-decimal pl-5 mb-4 space-y-1" {...props} />,
+                    li: ({ node, ...props }) => <li className="mb-1" {...props} />,
+                    strong: ({ node, ...props }) => <strong className="text-white font-bold" {...props} />,
+                    p: ({ node, ...props }) => <p className="mb-4 last:mb-0" {...props} />,
+                    code: ({ node, ...props }) => <code className="bg-[#1E1E1E] px-1.5 py-0.5 rounded text-[#00A9E0] font-mono text-xs" {...props} />,
+                  }}
+                >
+                  {report.reportText}
+                </Markdown>
+              </div>
             </div>
 
             <div className="text-center text-sm text-white/40 pt-4 pb-8">
@@ -261,7 +267,26 @@ export function ReportDetailView({ report, onBack }: ReportDetailViewProps) {
               {messages.map((message) => (
                 <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[80%] rounded-lg p-3 ${message.role === 'user' ? 'bg-[#00A9E0] text-white' : 'bg-[#2B2B2B] text-white/90 border border-[#3E3E42]'}`}>
-                    <p className="text-sm leading-relaxed">{message.content}</p>
+                    {message.role === 'assistant' ? (
+                      <div className="text-sm leading-relaxed prose prose-invert prose-sm max-w-none">
+                        <Markdown
+                          components={{
+                            h2: ({ node, ...props }) => <h2 className="text-base font-bold mt-3 mb-2 text-white/90" {...props} />,
+                            h3: ({ node, ...props }) => <h3 className="text-sm font-semibold mt-2 mb-1 text-white/90" {...props} />,
+                            ul: ({ node, ...props }) => <ul className="list-disc pl-4 mb-2 space-y-1" {...props} />,
+                            ol: ({ node, ...props }) => <ol className="list-decimal pl-4 mb-2 space-y-1" {...props} />,
+                            li: ({ node, ...props }) => <li className="mb-1" {...props} />,
+                            strong: ({ node, ...props }) => <strong className="text-white font-bold" {...props} />,
+                            p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+                            code: ({ node, ...props }) => <code className="bg-[#1E1E1E] px-1 py-0.5 rounded text-[#00A9E0]" {...props} />,
+                          }}
+                        >
+                          {message.content}
+                        </Markdown>
+                      </div>
+                    ) : (
+                      <p className="text-sm leading-relaxed">{message.content}</p>
+                    )}
                     <p className="text-xs mt-1 opacity-60">{message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                   </div>
                 </div>
