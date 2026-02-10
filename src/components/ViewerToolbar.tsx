@@ -12,8 +12,6 @@ import {
 } from "./ui/select";
 
 interface ViewerToolbarProps {
-  heatmapIntensity: number;
-  onHeatmapChange: (value: number[]) => void;
   onGenerateReport: () => void;
   reportType: string;
   onReportTypeChange: (value: string) => void;
@@ -21,8 +19,6 @@ interface ViewerToolbarProps {
 }
 
 export function ViewerToolbar({
-  heatmapIntensity,
-  onHeatmapChange,
   onGenerateReport,
   reportType,
   onReportTypeChange,
@@ -63,18 +59,9 @@ export function ViewerToolbar({
         </Button>
       </div>
 
-      {/* Right Side - Heatmap Intensity Slider */}
-      <div className="flex items-center gap-3 min-w-[300px]">
-        <Flame className="h-4 w-4 text-white/60" />
-        <span className="text-sm text-white/80 whitespace-nowrap">Heatmap Intensity:</span>
-        <Slider
-          value={[heatmapIntensity]}
-          onValueChange={onHeatmapChange}
-          max={100}
-          step={1}
-          className="flex-1"
-        />
-        <span className="text-sm text-white/80 w-12 text-right">{heatmapIntensity}%</span>
+      {/* Right Side - Empty for now, cleaned up Heatmap */}
+      <div className="flex items-center gap-3 min-w-[300px] justify-end">
+        {/* Potentially add other controls here later */}
       </div>
     </div>
   );

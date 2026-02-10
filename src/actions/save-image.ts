@@ -8,7 +8,7 @@ import { join } from 'path';
 
 export async function saveGeneratedImage(
     base64Image: string,
-    modelType: 'nano-banana' | 'decgan' | 'att-decgan',
+    modelType: 'nano-banana' | 'decgan' | 'att-decgan' | 'models/gemini-3-pro-image-preview',
     userId: string,
     prompt?: string,
     translationDirection?: 'A_to_B' | 'B_to_A'

@@ -35,8 +35,8 @@ export function AIImageModule() {
     const [isChatOpen, setIsChatOpen] = useState(false);
 
     const handleGenerateImage = () => {
-        // For DeCGAN and Att-DeCGAN models, use image-to-image translation
-        if (selectedModel === 'decgan' || selectedModel === 'att-decgan') {
+        // For DeCGAN, Att-DeCGAN, and Gemini 3 Pro Image Preview models, use image-to-image translation
+        if (selectedModel === 'decgan' || selectedModel === 'att-decgan' || selectedModel === 'models/gemini-3-pro-image-preview') {
             if (!sourceImage) {
                 toast.error("Please upload a source image");
                 return;
@@ -59,7 +59,7 @@ export function AIImageModule() {
                             // Save image to database
                             const saveResult = await saveGeneratedImage(
                                 imageData,
-                                selectedModel as 'nano-banana' | 'decgan' | 'att-decgan',
+                                selectedModel as 'nano-banana' | 'decgan' | 'att-decgan' | 'models/gemini-3-pro-image-preview',
                                 'default-user', // TODO: Replace with actual user ID from session
                                 undefined,
                                 translationDirection
@@ -100,7 +100,7 @@ export function AIImageModule() {
                         // Save image to database
                         const saveResult = await saveGeneratedImage(
                             imageData,
-                            selectedModel as 'nano-banana' | 'decgan' | 'att-decgan',
+                            selectedModel as 'nano-banana' | 'decgan' | 'att-decgan' | 'models/gemini-3-pro-image-preview',
                             'default-user', // TODO: Replace with actual user ID from session
                             prompt
                         );
@@ -269,6 +269,7 @@ export function AIImageModule() {
                                                 <SelectItem value="nano-banana">Google Mini (Nano Banana)</SelectItem>
                                                 <SelectItem value="decgan">DeCGAN</SelectItem>
                                                 <SelectItem value="att-decgan">Att-DeCGAN</SelectItem>
+                                                <SelectItem value="models/gemini-3-pro-image-preview">Gemini 3 Pro (Image Preview)</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -299,8 +300,8 @@ export function AIImageModule() {
                                                         <SelectValue placeholder="Select direction" />
                                                     </SelectTrigger>
                                                     <SelectContent className="bg-[#1E1E1E] border-[#3E3E42] text-white/80">
-                                                        <SelectItem value="A_to_B">CT → MRI</SelectItem>
-                                                        <SelectItem value="B_to_A">MRI → CT</SelectItem>
+                                                        <SelectItem value="A_to_B">X-ray → MRI</SelectItem>
+                                                        <SelectItem value="B_to_A">MRI → X-ray</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -312,7 +313,7 @@ export function AIImageModule() {
                                                     <div className="text-center">
                                                         <div className="text-white/80">Click to upload</div>
                                                         <div className="text-xs text-white/50 mt-1">
-                                                            {translationDirection === 'A_to_B' ? 'Upload CT image' : 'Upload MRI image'}
+                                                            {translationDirection === 'A_to_B' ? 'Upload X-ray image' : 'Upload MRI image'}
                                                         </div>
                                                     </div>
                                                     <Input

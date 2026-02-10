@@ -16,7 +16,6 @@ export default function ViewerPage() {
     const viewerLayout = useAppSelector((state) => state.ui.viewerLayout);
     const dispatch = useAppDispatch();
 
-    const [heatmapIntensity, setHeatmapIntensity] = useState(0);
     const [reportType, setReportType] = useState('none');
 
     const [selectedFileUrl, setSelectedFileUrl] = useState<string | null>(null);
@@ -52,22 +51,27 @@ export default function ViewerPage() {
             // Find metadata (this would ideally come from DicomViewer state lifting or context)
             // For now, we mock or try to extract from UI if possible, or pass basic info
             // In a real app, ViewerSidebar or a Context would hold the current patient meta
-            const mockMetadata = {
-                patientName: "JOHN DOE", // Ideally extracted
-                modality: "CR",
-                bodyPart: "CHEST",
-                studyDate: new Date().toISOString().split('T')[0]
+            // Generate random Patient ID
+            const randomId = Math.floor(Math.random() * 900000) + 100000;
+            const patientId = `PID-${randomId}`;
+
+            // Metadata for report generation
+            // Modality and Body Part will be determined by AI in the server action
+            const metadata = {
+                patientName: patientId,
+                studyDate: new Date().toISOString().split('T')[0],
+                // We leave modality and bodyPart undefined so the backend AI infers them
             };
 
             const result = await generateDicomReport({
                 imageData,
                 reportType: reportType as 'brief' | 'detailed',
-                metadata: mockMetadata
+                metadata: metadata
             });
 
             if (result.success) {
                 toast.success('Report generated successfully');
-                router.push('/reports');
+                router.push(`/reports?id=${result.reportId}`);
             } else {
                 toast.error('Failed to generate report: ' + result.error);
             }
@@ -87,8 +91,6 @@ export default function ViewerPage() {
             />
             <div className="flex-1 flex flex-col overflow-hidden" id="viewer-content">
                 <ViewerToolbar
-                    heatmapIntensity={heatmapIntensity}
-                    onHeatmapChange={(value) => setHeatmapIntensity(value[0])}
                     onGenerateReport={handleGenerateReport}
                     reportType={reportType}
                     onReportTypeChange={setReportType}
@@ -96,7 +98,6 @@ export default function ViewerPage() {
                 />
                 <ViewerModule
                     layout={viewerLayout}
-                    heatmapIntensity={heatmapIntensity}
                     imageGenType={'none'} // Simplified as requested
                     selectedFileUrl={selectedFileUrl}
                 />

@@ -57,18 +57,90 @@ export async function generateImage(prompt: string, model: string) {
 }
 
 /**
- * Generate an image from an input image using DeCGAN or Att-DeCGAN models
+ * Generate an image from an input image using DeCGAN, Att-DeCGAN, or Gemini models
  * @param imageBase64 - Base64 encoded image
- * @param model - Model name ('decgan' or 'att-decgan')
- * @param direction - Translation direction ('A_to_B' for MRI→CT or 'B_to_A' for CT→MRI)
+ * @param model - Model name ('decgan', 'att-decgan', or 'models/gemini-3-pro-image-preview')
+ * @param direction - Translation direction ('A_to_B' for X-ray→MRI or 'B_to_A' for MRI→X-ray)
  */
 export async function generateImageFromImage(
   imageBase64: string,
-  model: 'decgan' | 'att-decgan',
+  model: 'decgan' | 'att-decgan' | 'models/gemini-3-pro-image-preview',
   direction: 'A_to_B' | 'B_to_A'
 ) {
   console.log(`Generating image with ${model} model, direction: ${direction}`);
 
+  // Handle Gemini 3 Pro Image Preview model
+  if (model === 'models/gemini-3-pro-image-preview') {
+    const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
+    if (!apiKey) {
+      return { success: false, error: "Google Gemini API Key is missing" };
+    }
+
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+
+      // Remove base64 header if present
+      const base64Data = imageBase64.split(',')[1] || imageBase64;
+
+      // Identify mime type
+      let mimeType = "image/png";
+      if (imageBase64.includes("data:image/jpeg")) mimeType = "image/jpeg";
+      else if (imageBase64.includes("data:image/png")) mimeType = "image/png";
+      else if (imageBase64.includes("data:image/webp")) mimeType = "image/webp";
+
+      // Create prompt based on translation direction
+      const sourceModality = direction === 'A_to_B' ? 'X-ray' : 'MRI';
+      const targetModality = direction === 'A_to_B' ? 'MRI' : 'X-ray';
+      const prompt = `Convert this ${sourceModality} medical image to a ${targetModality} image. Maintain anatomical accuracy and medical detail. Generate only the translated medical image without any text or annotations.`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-pro-image-preview',
+        contents: [
+          {
+            parts: [
+              { text: prompt },
+              {
+                inlineData: {
+                  data: base64Data,
+                  mimeType: mimeType
+                }
+              }
+            ]
+          }
+        ],
+        config: {
+          safetySettings: [
+            { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+            { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+            { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+            { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+          ],
+        }
+      });
+
+      // Extract image from response
+      // Gemini models with image generation capability return images in the response
+      if (response.candidates && response.candidates[0]?.content?.parts) {
+        for (const part of response.candidates[0].content.parts) {
+          if ('inlineData' in part && part.inlineData?.data) {
+            return {
+              success: true,
+              message: `Image translated successfully from ${sourceModality} to ${targetModality}`,
+              image: part.inlineData.data
+            };
+          }
+        }
+      }
+
+      return { success: false, error: "No image data in Gemini response" };
+
+    } catch (error) {
+      console.error("Error generating image with Gemini 3 Pro:", error);
+      return { success: false, error: "Failed to process request with Gemini 3 Pro Image Preview" };
+    }
+  }
+
+  // Handle DeCGAN and Att-DeCGAN models
   try {
     // Dynamic import to avoid issues if package is not installed yet
     const { Client } = await import('@gradio/client');
